@@ -68,7 +68,6 @@ KGxLM/
 - Python ≥ 3.11
 - Conda (recommended)
 - Java (required for GSEA)
-- CUDA (optional, for acceleration)
 
 ### Setup
 
