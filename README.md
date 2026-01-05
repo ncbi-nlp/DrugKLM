@@ -1,12 +1,6 @@
 # KG×LM  
 ## Knowledge Graphs Meet Large Language Models: A New Paradigm for Drug Repurposing
 
-**Chih-Hsuan Wei¹\***, **Zhizheng Wang¹\***, **Chi-Ping Day²\***, Joey Chan¹˒³, Betty Tyler⁴, Hasan Slika⁴, Kyle Turner⁴,  
-Christine C. Alewine⁵, Chin-Hsien Tai², Shubo Tian¹, Chi-Ping’friend⁶, and **Zhiyong Lu¹†**
-
-\* These authors contributed equally  
-† Corresponding author
-
 ---
 
 ## Overview
