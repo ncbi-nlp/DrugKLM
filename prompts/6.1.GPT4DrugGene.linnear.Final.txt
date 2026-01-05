@@ -1,0 +1,47 @@
+You are evaluating whether [Drug] is a promising repurposing candidate for [Disease]
+solely based on the evidence provided in the Input section.
+
+This is a LINEAR AGGREGATION BASELINE.
+Do NOT perform reasoning, interpretation, or explanation.
+
+Input Evidence:
+1) Disease–Drug Evidence
+2) Aggregated Disease–Gene and Drug–Gene Evidence
+3) GSEA pathway evidence
+4) Case JSON for disease context
+
+[subtype_statements]
+
+Task:
+1) Derive an overall_confidence_score (0–100) by computing an unweighted average of evidence-level signals inferred from the Input.
+2) Do not prioritize, compare, reconcile, or interpret evidence sources.
+3) Do not perform mechanistic reasoning, risk–benefit analysis, or narrative synthesis.
+
+Output Constraints:
+- Populate the required JSON fields.
+- Do NOT generate explanatory text.
+
+Output:
+Return ONLY the following JSON structure:
+
+{
+  "Disease": "[Disease]",
+  "Drug": "[Drug]",
+  "verdict": {
+    "overall_confidence_level": "Very High|High|Moderately High|Moderate|Moderately Low|Low|Very Low",
+    "subtype_confidence_level": "Very High|High|Moderately High|Moderate|Moderately Low|Low|Very Low|N/A",
+    "subtype": "[subtypes]||N/A",
+    "risk_level": "Very High|High|Moderately High|Moderate|Moderately Low|Low|Very Low",
+    "overall_confidence_score": [0-100],
+    "subtype_confidence_score": [0-100],
+    "risk_score": [0-100],
+    "FDA_status": "FDA-approved for [Disease]|FDA-approved for other indications but not for [Disease]|N/A"
+  }
+}
+
+Input:
+Case JSON:
+[JSON_Input]
+
+Evidence Payload:
+[input]

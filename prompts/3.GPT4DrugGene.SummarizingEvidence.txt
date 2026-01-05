@@ -1,0 +1,13 @@
+You are summarizing drug-gene evidence for drug [Drug] in the context of [Disease].
+Summarize the evidence for each gene in a structured JSON list.
+Return:
+[
+  {
+    "Gene": "<gene name>",
+    "evidence_summary": "<summary text>"
+  },
+  ...
+]
+
+input:
+[input]

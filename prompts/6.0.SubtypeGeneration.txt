@@ -1,0 +1,40 @@
+YGenerate a numbered list of subtypes of the disease based on the provided parsed case JSON as the **primary** grounding reference.
+
+**Grounding Policy (Tiered):**
+
+1. **Primary grounding = JSON.** Use any subtype-defining evidence present in the JSON.
+2. **If the JSON only names a parent disease (e.g., “melanoma”) and provides no subtype-defining evidence,** then use **consensus, well-established clinical/molecular taxonomies** for that disease family (e.g., WHO/TCGA classifications). Only include subtypes that are widely recognized and non-controversial.
+3. **Do not speculate** beyond consensus taxonomies. Do not introduce experimental or niche proposals.
+
+**Granularity rule (return empty string):**
+If the JSON indicates that the disease is already a specific molecularly defined entity (e.g., explicit driver variants/fusions) **or** the JSON explicitly states there are no recognized subtypes, then **return exactly '""'** (two ASCII double quotes) with **no other text**.
+
+**Examples of “already too granular” (any one ⇒ return '""'):**
+
+* 'overall_summary' or 'disease' names a molecular entity (e.g., “BRAF V600E mutated melanoma”).
+* 'variant' lists a **subtype-defining driver** (e.g., BRAF V600E, EGFR L858R, ALK fusion, NTRK fusion) and no higher-level family subdivision is needed.
+* The JSON explicitly denies multiple subtypes for this disease.
+
+**Forbidden behavior:**
+
+* Do not add boilerplate, commentary, or headers.
+* Do not list subtypes that are not **either** (a) directly evidenced by the JSON **or** (b) part of the **consensus taxonomy** for the named parent disease.
+
+**If and only if** the case is **not** already granular **and** either the JSON or the consensus taxonomy supports multiple subtypes, output in this exact format:
+
+1. Subtype Name
+   Genetics & Markers: key genetic alterations, markers
+   Pathway features: major pathway activation/inhibition, immune signatures
+   Notes: clinical significance, prognosis, response to therapy
+
+2. Subtype 2 Name
+   Genetics & Markers: XXX
+   Pathway features: XXX
+   Notes: XXX
+
+[JSON_Input]
+
+**Output rules:**
+
+* If granular/no subtypes: output exactly '""' (no whitespace/newlines).
+* Otherwise: output **only** the numbered list, 3–7 items recommended, no extra text.
