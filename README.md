@@ -1,7 +1,4 @@
-# KG×LM  
-## Knowledge Graphs Meet Large Language Models: A New Paradigm for Drug Repurposing
-
----
+## KG×LM: Knowledge Graphs Meet Large Language Models: A New Paradigm for Drug Repurposing
 
 ## Overview
 
