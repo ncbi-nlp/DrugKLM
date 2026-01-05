@@ -59,7 +59,7 @@ Subtype-aware Drug Ranking
 
 ```
 KGxLM/
-├── AutoRun.sh                     # End-to-end pipeline
+├── KGxLM.sh                     # End-to-end pipeline
 ├── input/                         # Disease input files
 ├── output/                        # Generated results
 ├── prompts/                       # LLM prompts
@@ -116,7 +116,7 @@ MODEL=gpt-4o
 Run the complete pipeline for a disease:
 
 ```bash
-bash AutoRun.sh "Acute Myeloid Leukemia"
+bash KGxLM.sh "Acute Myeloid Leukemia"
 ```
 
 ---
