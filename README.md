@@ -68,7 +68,7 @@ KGxLM/
 - Python ≥ 3.11
 - Conda (recommended)
 - Java (required for GSEA)
-- Download **[database](https://ftp.ncbi.nlm.nih.gov/pub/lu/KGxLM/)**
+- Download **[files](https://ftp.ncbi.nlm.nih.gov/pub/lu/KGxLM/)** and store in KG×LM folder
 ### Setup
 
 ```bash
@@ -144,8 +144,8 @@ conda env export > environment.yml
 If you use **KG×LM**, please cite:
 
 ```bibtex
-@article{KGxLM,
-  title={Knowledge Graphs Meet Large Language Models: A New Paradigm for Drug Repurposing},
+@article{KG×LM,
+  title={KG×LM: Knowledge Graphs Meet Large Language Models: A New Paradigm for Drug Repurposing},
   author={Wei, Chih-Hsuan and Wang, Zhizheng and Day, Chi-Ping and others},
   journal={TBD},
   year={2025}
