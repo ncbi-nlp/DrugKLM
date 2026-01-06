@@ -162,4 +162,4 @@ KG×LM is intended for **research and hypothesis generation only** and is not de
 
 ## Contact
 
-For questions or collaborations, please open a GitHub issue or contact the corresponding author, Zhiyong Lu (zhiyonglu@nih.gov).
+For questions or collaborations, please open a GitHub issue or contact the author, Chih-Hsuan Wei (chih-hsuan.wei@nih.gov).
