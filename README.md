@@ -29,19 +29,16 @@ Unlike conventional drug-repurposing pipelines that focus on binary drug–disea
 ```
 Disease Query
    ↓
-Disease Normalization & Attribute Extraction
+Disease Standardization
    ↓
-Disease → Drug / Gene Candidate Retrieval (KG)
+Candidate Drug Generation and Evidence Integration
    ↓
-Drug–Gene Evidence Integration (CTD, PubTator, DGIdb)
+Disease- and Drug-related Gene Evidence Integration
    ↓
-LINCS Perturbation & Drug Ranking
+Pathway Perturbation Analysis (LINCS / GSEA)
    ↓
-GSEA Pathway Enrichment
-   ↓
-LLM-based Mechanistic Summarization
-   ↓
-Subtype-aware Drug Ranking
+Evidence-grounded Confidence Scoring and Drug Ranking
+
 ```
 
 ---
