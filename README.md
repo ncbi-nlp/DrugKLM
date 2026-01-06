@@ -68,7 +68,7 @@ KGxLM/
 - Python ≥ 3.11
 - Conda (recommended)
 - Java (required for GSEA)
-
+- Download **[database](https://ftp.ncbi.nlm.nih.gov/pub/lu/KGxLM/)**
 ### Setup
 
 ```bash
