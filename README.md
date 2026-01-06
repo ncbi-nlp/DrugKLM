@@ -116,24 +116,6 @@ Main output file:
 output/<Disease>.final_prediction.tsv
 ```
 
-Each result includes:
-- Drug name
-- Aggregated ranking score
-- Supporting genes
-- Literature evidence
-- LINCS perturbation support
-- Mechanistic interpretation
-
----
-
-## Reproducibility
-
-For full environment capture:
-
-```bash
-conda env export > environment.yml
-```
-
 ---
 
 ## Citation
