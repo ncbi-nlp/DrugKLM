@@ -1,8 +1,8 @@
-## KG×LM: Knowledge Graphs Meet Large Language Models: A New Paradigm for Drug Repurposing
+## DrugKLM: Knowledge Graphs Meet Large Language Models: A New Paradigm for Drug Repurposing
 
 ## Overview
 
-**KG×LM** is a disease-centric framework that integrates **biomedical knowledge graphs (KGs)** with **large language models (LLMs)** to enable **systematic drug repurposing and disease-specific drug ranking**.
+**DrugKLM** is a disease-centric framework that integrates **biomedical knowledge graphs (KGs)** with **large language models (LLMs)** to enable **systematic drug repurposing and disease-specific drug ranking**.
 
 The framework combines:
 - Structured knowledge (drug–gene–disease relations)
@@ -10,7 +10,7 @@ The framework combines:
 - Perturbational transcriptomics (LINCS)
 - LLM-based reasoning and summarization
 
-Unlike conventional drug-repurposing pipelines that focus on binary drug–disease prediction, KG×LM provides an **interpretable, multi-evidence ranking of candidate drugs**, with optional **mechanistic explanations and disease subtype–aware analysis**.
+Unlike conventional drug-repurposing pipelines that focus on binary drug–disease prediction, DrugKLM provides an **interpretable, multi-evidence ranking of candidate drugs**, with optional **mechanistic explanations and disease subtype–aware analysis**.
 
 ---
 
@@ -82,7 +82,7 @@ pip install -r requirements.txt
 
 ## LLM Configuration
 
-KG×LM uses OpenAI-compatible LLMs.
+DrugKLM uses OpenAI-compatible LLMs.
 
 Create a parameter file (not committed to GitHub):
 
@@ -120,11 +120,11 @@ output/<Disease>.final_prediction.tsv
 
 ## Citation
 
-If you use **KG×LM**, please cite:
+If you use **DrugKLM**, please cite:
 
 ```bibtex
-@article{KG×LM,
-  title={KG×LM: Knowledge Graphs Meet Large Language Models: A New Paradigm for Drug Repurposing},
+@article{DrugKLM,
+  title={DrugKLM: Knowledge Graphs Meet Large Language Models: A New Paradigm for Drug Repurposing},
   author={Wei, Chih-Hsuan and Wang, Zhizheng and Day, Chi-Ping and others},
   journal={TBD},
   year={2025}
@@ -135,7 +135,7 @@ If you use **KG×LM**, please cite:
 
 ## Disclaimer
 
-KG×LM is intended for **research and hypothesis generation only** and is not designed for direct clinical decision-making.
+DrugKLM is intended for **research and hypothesis generation only** and is not designed for direct clinical decision-making.
 
 ---
 

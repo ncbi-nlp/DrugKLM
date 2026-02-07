@@ -1,0 +1,31 @@
+Instruction:
+
+We are investigating drug repurposing opportunities for the treatment of [Disease].
+
+Context:
+
+Use the following parsed case JSON as primary grounding of the disease.
+
+[JSON_Input]
+
+List all relevant biological/biomedical mechanisms implicated in [Disease].  
+This should include:
+- Molecular targets (receptors, enzymes, transporters, ion channels, etc.)
+- Signaling pathways (PI3K/AKT, MAPK, JAK/STAT, etc.)
+- Pharmacological actions (anti-inflammatory, immunomodulatory, antiviral, etc.)
+- Cellular processes (apoptosis, autophagy, EMT, cell cycle, etc.)
+- Epigenetic or transcriptional regulation (DNA methylation, histone modification, miRNA, etc.)
+- Metabolic pathways (glycolysis, oxidative phosphorylation, lipid metabolism, etc.)
+- Immune system mechanisms (cytokines, immune checkpoints, chemokines, etc.)
+- Microbiome-related mechanisms (gut microbiota interactions, microbial metabolites)
+- Tissue/organ-level mechanisms (fibrosis, barrier function, remodeling, etc.)
+- Protein–protein interactions or molecular complexes (e.g., inflammasome, mTORC1)
+- Other mechanisms not included in above bullets.
+
+Output Format:
+[
+    {
+        "Mechanism": "[name of target / pathway / pharmacological action]",
+        "Role_in_Disease": "[brief explanation of how this mechanism contributes to the disease]"
+    }
+]

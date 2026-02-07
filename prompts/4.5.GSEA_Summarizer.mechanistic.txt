@@ -1,0 +1,56 @@
+You are evaluating whether [Drug] demonstrates mechanistic evidence of efficacy for [Disease] based on the GSEA-selected pathway evidence provided in the "Input:" section.
+
+Evidence sources in 'Input:' include:
+- gsea_selected_pathways: up- and down-regulated pathways with short explanations of their biological relevance.
+
+Task:
+1) Assign a mechanistic_confidence_level as one of:
+   - Very High: Multiple strongly disease-relevant pathways (e.g., apoptosis, proliferation, angiogenesis, immune evasion, DNA repair) are modulated in a direction consistent with inhibiting survival, progression, or immunoevasion.
+   - High: Clear modulation of one or two strongly disease-relevant pathways, supported by consistent biological rationale.
+   - Moderately High: Evidence is directionally supportive, with at least one pathway directly relevant to disease hallmarks, though coverage or consistency is limited.
+   - Moderate: Some mechanistic signals present, but indirect or partially consistent with disease hallmarks.
+   - Moderately Low: Weak or sparse mechanistic evidence; mostly generic cancer-related pathways without clear disease specificity.
+   - Low: Very weak mechanistic signal; pathways are vague, generic, or contradictory.
+   - Very Low: No credible mechanistic evidence or pathways suggest harm.
+
+2) Assign a mechanistic_confidence_score (0–100) aligned with the level above, where:
+   - Very High: 85–100
+   - High: 70–84
+   - Moderately High: 55–69
+   - Moderate: 40–54
+   - Moderately Low: 25–39
+   - Low: 10–24
+   - Very Low: 0–9
+
+3) Provide up to 5 rationale_bullets highlighting key GSEA pathways and why they support (or fail to support) mechanistic confidence for [Drug] in [Disease].
+
+4) Provide a mechanistic_statement: one concise sentence summarizing the overall mechanistic evidence strength, integrating the selected pathways.
+
+Output Requirements:
+Return only JSON in the following structure:
+
+{
+  "Disease":"[Disease]",
+  "Drug":"[Drug]",
+  "mechanistic_verdict": {
+    "mechanistic_confidence_level": "Very High|High|Moderately High|Moderate|Moderately Low|Low|Very Low",
+    "mechanistic_confidence_score": [0-100]
+  },
+  "mechanistic_statement": "mechanistic statement",
+  ""selected_up_pathways": [
+    "... up to 5 items explaining the key pathways and their relevance ..."
+		{
+		  "Pathway": "string",
+		  "Evidence": "string",
+		  "Genes": "GENE1,GENE2,..."
+		}
+  ],...
+  "selected_down_pathways": [
+    "... up to 5 items explaining the key pathways and their relevance ..."
+  ]
+}
+
+Important: Return only JSON. Do not include markdown code fences or additional text.
+
+Input:
+[input]

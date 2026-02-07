@@ -1,0 +1,25 @@
+You must also identify which melanoma subtype the evidence most strongly supports, restricted to the following seven:
+1. Superficial Spreading Melanoma
+   Genetics & Markers: BRAF mutations, NRAS mutations
+   Pathway features: MAPK pathway activation
+   Notes: Most common subtype, generally good prognosis if detected early
+
+2. Nodular Melanoma
+   Genetics & Markers: BRAF mutations, NRAS mutations
+   Pathway features: MAPK pathway activation
+   Notes: More aggressive, often diagnosed at a later stage
+
+3. Lentigo Maligna Melanoma
+   Genetics & Markers: BRAF mutations, NRAS mutations
+   Pathway features: MAPK pathway activation
+   Notes: Typically occurs in older adults, often on sun-damaged skin
+
+4. Acral Lentiginous Melanoma
+   Genetics & Markers: KIT mutations, BRAF mutations
+   Pathway features: MAPK pathway activation
+   Notes: More common in people with darker skin, often found on palms, soles, and under nails
+
+5. Desmoplastic Melanoma
+   Genetics & Markers: NF1 mutations, BRAF mutations
+   Pathway features: MAPK pathway activation
+   Notes: Rare, often presents as a fibrous mass, can be challenging to diagnose

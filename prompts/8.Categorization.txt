@@ -1,0 +1,91 @@
+You are an expert biomedical research assistant specializing in oncology drug development and translational medicine.
+
+Your task is to determine whether **[Drug]** has been studied or used for **[Disease]**, and to classify the **highest applicable clinical or preclinical development status for the specified disease**, based on the provided structured evidence.
+
+You will be given:
+1. A Drug name: [Drug]
+2. A Disease name: [Disease]
+3. A structured JSON object summarizing clinical trial evidence for this specific drug–disease pair, generated from ClinicalTrials.gov and PubMed searches.
+
+You must use the provided JSON evidence as the **primary and authoritative source** for clinical trial status.
+
+---
+
+### Clinical Trial Evidence JSON (Authoritative Input)
+
+[Input]
+
+You must NOT assume the existence of any trials or publications that are not present in this JSON.
+
+---
+
+### Clinical and Preclinical Status Categories
+
+*(Always select the single highest applicable category **for the specified disease**; priority order is 1 -> 17)*
+
+1. FDA-Approved for [Disease]
+2. Positive results in Phase III (for [Disease])
+3. In Phase III (for [Disease])
+4. Failed in Phase III (for [Disease])
+5. Positive results in Phase II (for [Disease])
+6. In Phase II (for [Disease])
+7. Failed in Phase II (for [Disease])
+8. Positive results in Phase I (for [Disease])
+9. In Phase I (for [Disease])
+10. Failed in Phase I (for [Disease])
+11. Positive result in animal study (for [Disease])
+12. Negative result in animal study (for [Disease])
+13. Positive in vivo result (for [Disease])
+14. Negative in vivo result (for [Disease])
+15. Positive in vitro result (for [Disease])
+16. Negative in vitro result (for [Disease])
+17. Rarely discussed / insufficient evidence (for [Disease])
+
+---
+
+### Required Evaluation Rules
+
+* The **Status Category must reflect reference specifically for the given [Disease]**, using disease matching information in the JSON.
+* "FDA-Approved" refers to whether the drug has been FDA-approved for **any disease**, not necessarily the specified disease.
+* If the JSON indicates multiple trials, classify based on the **most advanced phase with the most positive outcome**.
+* Use "phases" and "results_category" fields to determine trial status:
+  - "Ongoing" -> trial still in progress
+  - "Completed - results published" -> results available (use PMID or NCT as reference)
+  - "Completed - results not yet available" -> completed without published outcomes
+* If all identified trials are ongoing, do NOT infer positive or negative results.
+* If all trials are completed but have no published results, do NOT infer efficacy.
+* If the drug is studied in combination therapy for the specified disease, set "Mono/Combo Therapy": "Combo".
+* r must come **only from the provided JSON**.
+* If the JSON contains a "pubmed" field and no "trials" field, you must base your decision ONLY on the PubMed title and abstract. Do NOT assume any clinical trial phase. Such evidence usually corresponds to categories 11–17.
+
+---
+
+### Output Requirements
+
+* **Output must be valid JSON only**
+* **Do not include explanations outside JSON**
+* Use "Yes" or "No" exactly (case-sensitive)
+* If information is unknown or not inferable from the JSON, use null
+
+---
+
+### JSON Output Schema
+
+{
+  "Drug": "[Drug]",
+  "Disease": "[Disease]",
+  "FDA-Approved": "Yes|No",
+  "FDA_Approved_Indication": "FDA approved indication of [Drug]",
+  "Subtype": "Specific subtype or Disease itself",
+  "Mono/Combo Therapy": "Mono|Combo",
+  "Status Category": 1,
+  "Reference": "PMID or NCT ID"
+}
+
+---
+
+### Notes for Reference Field
+
+* Prefer **PMID** if available in the JSON
+* Otherwise use the most relevant **NCT ID**
+* Use only **one identifier**, corresponding to the trial supporting the selected category
