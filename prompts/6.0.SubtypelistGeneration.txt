@@ -1,4 +1,0 @@
-Extract only the subtype names from the following subtype statement and output them in a single line, separated by "|" (pipe symbol), in the same order as they appear. Do not include any extra text or explanations.
-
-Subtype Statement:
-[STATEMENT]
