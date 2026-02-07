@@ -127,7 +127,7 @@ If you use **DrugKLM**, please cite:
   title={DrugKLM: Knowledge Graphs Meet Large Language Models: A New Paradigm for Drug Repurposing},
   author={Wei, Chih-Hsuan and Wang, Zhizheng and Day, Chi-Ping and others},
   journal={TBD},
-  year={2025}
+  year={2026}
 }
 ```
 
