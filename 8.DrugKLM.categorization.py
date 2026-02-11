@@ -341,6 +341,80 @@ def load_all_diseases():
     return diseases_by_nct
 
 
+# ======================
+# FDA-approved labels helpers
+# ======================
+FDA_LABELS_TSV = "DB/FDA-approved/labels.tsv"
+
+
+def _norm_text(s: str) -> str:
+    """Normalize text for case-insensitive exact match. Keep it simple and deterministic."""
+    if s is None:
+        return ""
+    return str(s).strip().lower()
+
+
+def load_fda_labels(labels_tsv: str = FDA_LABELS_TSV):
+    """
+    Load FDA labels TSV and build an index for case-insensitive exact match against:
+      - brand_name
+      - generic_name
+    Returns:
+      - name2rows: dict[str, list[dict]]
+    """
+    name2rows = defaultdict(list)
+    try:
+        with open(labels_tsv, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f, delimiter="\t")
+            for row in reader:
+                brand = _norm_text(row.get("brand_name", ""))
+                generic = _norm_text(row.get("generic_name", ""))
+                if brand:
+                    name2rows[brand].append(row)
+                if generic:
+                    name2rows[generic].append(row)
+    except FileNotFoundError:
+        # If the FDA label file is not available, fall back to GPT behavior silently.
+        return defaultdict(list)
+    return name2rows
+
+
+def fda_label_match(drug: str, disease: str, name2rows) -> dict:
+    """
+    Apply FDA label matching rules.
+    """
+    drug_key = _norm_text(drug)
+    disease_key = _norm_text(disease)
+
+    rows = name2rows.get(drug_key, [])
+    if not rows:
+        return {
+            "drug_matched": False,
+            "disease_in_indication": False,
+            "matched_rows": 0,
+            "indication_text": ""
+        }
+
+    for r in rows:
+        indication = r.get("indications_and_usage", "") or ""
+        if disease_key and disease_key in _norm_text(indication):
+            return {
+                "drug_matched": True,
+                "disease_in_indication": True,
+                "matched_rows": len(rows),
+                "indication_text": indication
+            }
+
+    # matched drug but disease not in indication
+    return {
+        "drug_matched": True,
+        "disease_in_indication": False,
+        "matched_rows": len(rows),
+        "indication_text": rows[0].get("indications_and_usage", "")
+    }
+
+
+
 def process_drug_disease_pair(drug, disease, drugs_by_nct, diseases_by_nct):
     drug_l = drug.lower()
     disease_l = disease.lower()
@@ -403,7 +477,7 @@ def build_prompt(prompt_template, drug, disease, evidence_json):
 # Main
 # ======================
 def main(input_tsv, output_gpt_jsonl, prompt_file):
-    
+
     CATEGORIZATION_FIELDS = [
         "FDA-Approved",
         "FDA-Approved Indication",
@@ -412,17 +486,20 @@ def main(input_tsv, output_gpt_jsonl, prompt_file):
         "Category Name",
         "Reference"
     ]
-    
+
     print("Loading drugs / diseases...")
     drugs_by_nct = load_all_drugs()
     diseases_by_nct = load_all_diseases()
+
+    print("Loading FDA labels...")
+    fda_name2rows = load_fda_labels(FDA_LABELS_TSV)
 
     print("Loading Azure config and prompt...")
     azure_config = load_azure_openai_config()
     prompt_template = load_prompt_template(prompt_file)
 
     with open(input_tsv, newline="", encoding="utf-8") as fin, \
-        open(output_gpt_jsonl, "w", newline="", encoding="utf-8") as fout:
+         open(output_gpt_jsonl, "w", newline="", encoding="utf-8") as fout:
 
         reader = csv.DictReader(fin, delimiter="\t")
         fieldnames = reader.fieldnames + CATEGORIZATION_FIELDS
@@ -435,7 +512,9 @@ def main(input_tsv, output_gpt_jsonl, prompt_file):
 
             print(f"[{i}] {disease} | {drug}")
 
-            # === 原本的 Categorization 流程（完全不動） ===
+            # =============================
+            # Step 1: Collect trial evidence
+            # =============================
             trials = process_drug_disease_pair(
                 drug, disease, drugs_by_nct, diseases_by_nct
             )
@@ -455,6 +534,20 @@ def main(input_tsv, output_gpt_jsonl, prompt_file):
                     "trials": trials
                 }
 
+            # =============================
+            # Step 2: FDA label rule (before GPT)
+            # =============================
+            label_hit = fda_label_match(drug, disease, fda_name2rows)
+
+            if label_hit["drug_matched"]:
+                evidence_obj["fda_label_info"] = {
+                    "is_fda_approved": True,
+                    "indications_and_usage": label_hit.get("indication_text", "")
+                }
+
+            # =============================
+            # Step 3: Build prompt AFTER evidence complete
+            # =============================
             prompt_text = build_prompt(
                 prompt_template, drug, disease, evidence_obj
             )
@@ -462,38 +555,46 @@ def main(input_tsv, output_gpt_jsonl, prompt_file):
             try:
                 gpt_response = call_azure_gpt4o(prompt_text, azure_config)
                 gpt_json = safe_parse_json(gpt_response)
-            except Exception as e:
+            except Exception:
                 gpt_json = {}
 
             status_cat = gpt_json.get("Status Category", "")
 
-            # --- FDA-Approved: input FDA_status > Category semantics > GPT ---
+            # =============================
+            # Step 4: FDA override logic
+            # =============================
             fda_approved = gpt_json.get("FDA-Approved", "")
-
-            input_fda_status = row.get("FDA_status", "").lower()
-
-            # --- fda_approved_indication: rule-based override ---
             fda_approved_indication = gpt_json.get("FDA_Approved_Indication", "")
-            
-            # Rule 1: input says FDA-approved (drug-level)
-            if input_fda_status.startswith("fda-approved"):
+
+            # A) Deterministic FDA label rule
+            if label_hit["drug_matched"]:
                 fda_approved = "Yes"
 
-            # Rule 2: Category # = 1 implies FDA-approved for this disease
+                if label_hit["disease_in_indication"]:
+                    fda_approved_indication = disease
+
+            # B) Existing override rules
+            input_fda_status = row.get("FDA_status", "").lower()
+
+            if input_fda_status.startswith("fda-approved"):
+                fda_approved = "Yes"
             else:
                 try:
                     if int(status_cat) == 1:
                         fda_approved = "Yes"
                 except Exception:
                     pass
-            
+
+            # =============================
+            # Step 5: Write output
+            # =============================
             row["FDA-Approved"] = fda_approved
             row["FDA-Approved Indication"] = fda_approved_indication
             row["Mono/Combo Therapy"] = gpt_json.get("Mono/Combo Therapy", "")
             row["Category #"] = status_cat
             row["Reference"] = gpt_json.get("Reference", "")
 
-            # ---- derive Category Name from Category # ----
+            # Derive Category Name
             category_name = ""
             try:
                 status_cat_int = int(status_cat)
@@ -507,6 +608,7 @@ def main(input_tsv, output_gpt_jsonl, prompt_file):
 
             writer.writerow(row)
             fout.flush()
+
 
 if __name__ == "__main__":
     
