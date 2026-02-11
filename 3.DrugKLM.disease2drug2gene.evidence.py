@@ -438,6 +438,51 @@ def collect_pubtator_gene_kgids_from_tsv(tsv_path: str, drug_kgid: str) -> Set[s
                 allow.add(gene_kgid)
     return allow
 
+def load_pubtator_from_tsv(tsv_path: str, drug_kgid: str):
+    """
+    Offline PubTator loader.
+    Returns:
+        Dict[gene_kgid] = {
+            "text_hl": [...],
+            "relation": {"type": str, "publications": int}
+        }
+    """
+    result = {}
+
+    with open(tsv_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if not line:
+                continue
+
+            parts = line.split("\t")
+            if len(parts) < 6:
+                continue
+
+            # 假設格式：
+            # drug_name, drug_kgid, gene_name, gene_kgid, relation_type, publications, snippet
+            drug_id = parts[1].strip()
+            gene_kgid = parts[3].strip()
+            relation_type = parts[4].strip()
+            publications = parts[5].strip()
+            snippet = parts[6].strip() if len(parts) > 6 else ""
+
+            if drug_id != str(drug_kgid):
+                continue
+
+            entry = result.setdefault(gene_kgid, {})
+
+            if relation_type:
+                entry["relation"] = {
+                    "type": relation_type,
+                    "publications": int(publications) if publications.isdigit() else 0
+                }
+
+            if snippet:
+                entry.setdefault("text_hl", []).append(snippet)
+
+    return result
+
 def load_pubtator_for_drug_by_kgids(drug_name: str,
                                     gene_kgid_to_name: Dict[str, str],
                                     max_results: int = 5,
@@ -526,9 +571,21 @@ def load_pubtator_for_drug_by_kgids(drug_name: str,
     def _search_relations_snippets(gene_cid: str, chem_cid: str) -> list[str]:
         text = f"relations:ANY|{gene_cid}|{chem_cid}"
         url = f"{base}/search/?text={quote(text)}"
-        r = sess.get(url, timeout=30)
-        r.raise_for_status()
-        data = r.json()
+
+        try:
+            r = sess.get(url, timeout=(10, 120))  # (connect timeout, read timeout)
+            r.raise_for_status()
+            data = r.json()
+        except requests.exceptions.ReadTimeout:
+            print(f"[PubTator][WARN] ReadTimeout for {gene_cid} - {chem_cid}")
+            return []
+        except requests.exceptions.RequestException as e:
+            print(f"[PubTator][WARN] Request error for {gene_cid} - {chem_cid}: {e}")
+            return []
+        except Exception as e:
+            print(f"[PubTator][WARN] Unexpected error: {e}")
+            return []
+
         hits = data.get("results", []) if isinstance(data, dict) else []
         out = []
         for h in hits[:max_results]:
@@ -1187,14 +1244,14 @@ def main():
                 pt_by_gene_kgid: Dict[str, dict] = {}
                 if drug_kgid and gene_kgid:
                     allowed_gene_kgids = {gene_kgid}
-                    pt_by_gene_kgid = load_pubtator_for_drug_by_kgids(
-                        drug_name=drug_name,
-                        gene_kgid_to_name={gene_kgid: gene_name},
-                        max_results=5,
-                        session=session,
-                        allowed_gene_kgids=allowed_gene_kgids
-                    )
-
+                    if drug_kgid:
+                        pt_by_gene_kgid = load_pubtator_from_tsv(
+                            args.pubtator_tsv,
+                            drug_kgid=str(drug_kgid)
+                        )
+                    else:
+                        pt_by_gene_kgid = {}
+                     
                 # CTD
                 ctd_clean = []
                 if norm_gene in ctd_ev_by_gene:
@@ -1347,7 +1404,7 @@ if __name__ == "__main__":
 
 
 """
-python 3.KGxLM.disease2drug2gene.evidence.py \
+python 3.DrugKLM.disease2drug2gene.evidence.py \
   --input output/disease2drug/melanoma.disease2drug.candidate.jsonl \
   --disease2gene_candidate_json output/disease2gene/melanoma.disease2gene.candidate.jsonl \
   --ctd_tsv DB/DrugGeneRelationEvdience.CTD.tsv \
@@ -1358,7 +1415,7 @@ python 3.KGxLM.disease2drug2gene.evidence.py \
   --disease_detail_json input/melanoma.json \
   --output_folder output/drug2gene/melanoma
 
-python 3.KGxLM.disease2drug2gene.evidence.py \
+python 3.DrugKLM.disease2drug2gene.evidence.py \
   --input output/disease2drug/mcrc.disease2drug.candidate.jsonl \
   --disease2gene_candidate_json output/disease2gene/mcrc.disease2gene.candidate.jsonl \
   --ctd_tsv DB/DrugGeneRelationEvdience.CTD.tsv \
