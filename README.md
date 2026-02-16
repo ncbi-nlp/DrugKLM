@@ -38,7 +38,8 @@ Disease- and Drug-related Gene Evidence Integration
 Pathway Perturbation Analysis (LINCS / GSEA)
    ↓
 Evidence-grounded Confidence Scoring and Drug Ranking
-
+   ↓
+Standardized clinical stage labeling
 ```
 
 ---
