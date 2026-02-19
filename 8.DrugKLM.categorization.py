@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import re
 import os
 import argparse
 import csv
@@ -46,10 +47,9 @@ DISEASE_SYNONYM_CACHE = {}
 # ======================
 # Azure OpenAI helpers
 # ======================
-def generate_disease_synonyms(client, deployment_name, disease_name):
+def generate_disease_synonyms(config, deployment_name, disease_name):
     """
-    Ask GPT-5 to generate disease synonyms and subtype synonyms.
-    Return a list of unique disease names.
+    Generate disease synonyms using GPT-4o (live version).
     """
 
     prompt = f"""
@@ -82,27 +82,23 @@ Return ONLY valid JSON:
 }}
 """
 
-
-    # Use unified GPT-5 caller
-    raw_response = call_azure_gpt5(
-        client,
-        deployment_name,
-        prompt
-    )
+    raw_response = call_azure_gpt4o(prompt, config)
 
     parsed = safe_parse_json(raw_response)
 
-    if "disease_list" not in parsed:
-        print("Synonym generation failed:", parsed)
-        return [disease_name]
+    disease_list = []
 
-    disease_list = parsed["disease_list"]
+    if isinstance(parsed, dict) and "disease_list" in parsed:
+        disease_list = parsed["disease_list"]
+
+    if not disease_list:
+        return [disease_name.lower()]
 
     if disease_name not in disease_list:
         disease_list.append(disease_name)
 
-    print(disease_list)
     return sorted(set(x.lower().strip() for x in disease_list if x))
+
 
 
 def load_azure_openai_config(param_file="parameter.gpt4o.real.txt"):
