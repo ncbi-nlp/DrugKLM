@@ -17,6 +17,7 @@ from collections import defaultdict
 INTERVENTION_OTHER_NAMES = "DB/ClinicalTrials/intervention_other_names.txt"
 INTERVENTIONS = "DB/ClinicalTrials/interventions.txt"
 BROWSE_CONDITIONS = "DB/ClinicalTrials/browse_conditions.txt"
+NCT_META_FILE = "DB/ClinicalTrials/nct_phase_studytype.txt"
 
 PUBMED_SESSION = requests.Session()
 PUBMED_SLEEP_SEC = 0.4
@@ -186,6 +187,21 @@ def safe_parse_json(text):
 # ======================
 # ClinicalTrials.gov helpers
 # ======================
+def load_nct_metadata():
+    meta = {}
+
+    with open(NCT_META_FILE, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        for row in reader:
+            meta[row["nct_id"]] = {
+                "study_type": row["study_type"],
+                "phase": row["phase"],
+                "overall_status": row["overall_status"],
+                "last_update_posted": row["last_update_posted_date"],
+            }
+
+    return meta
+    
 def get_study_json(nct_id, cache):
     if nct_id in cache:
         return cache[nct_id]
@@ -561,7 +577,14 @@ def fda_label_match(drug: str, disease_list: list, name2rows) -> dict:
         "indication_text": rows[0].get("indications_and_usage", "")
     }
 
-def process_drug_disease_pair(drug, disease_list, drugs_by_nct, diseases_by_nct):
+def process_drug_disease_pair(
+    drug,
+    disease_list,
+    drugs_by_nct,
+    diseases_by_nct,
+    nct_meta
+):
+    disease_list = [x.lower() for x in disease_list]
     drug_l = drug.lower()
 
     matched_ncts = sorted(
@@ -572,13 +595,69 @@ def process_drug_disease_pair(drug, disease_list, drugs_by_nct, diseases_by_nct)
             for mesh_l in (m.lower() for m in diseases_by_nct.get(nct, []))
         )
     )
-    study_cache = {}
+
+    # If too many NCTs, keep only those with valid phase
+    if len(matched_ncts) > 50:
+
+        phase_rank = {
+            "PHASE4": 4,
+            "PHASE3": 3,
+            "PHASE2": 2,
+            "PHASE1": 1,
+            "EARLYPHASE1": 0
+        }
+
+        ranked_trials = []
+
+        for nct_id in matched_ncts:
+            meta = nct_meta.get(nct_id, {})
+            phase = meta.get("phase", "")
+
+            if not phase:
+                continue
+
+            phase = phase.upper().replace(" ", "")
+
+            if phase == "NA":
+                continue
+
+            # Handle combined phases like PHASE1/PHASE2
+            phase_parts = phase.split("/")
+
+            max_rank = max(
+                phase_rank.get(p, -1)
+                for p in phase_parts
+            )
+
+            if max_rank >= 0:
+                try:
+                    nct_number = int(nct_id.replace("NCT", ""))
+                except Exception:
+                    nct_number = 0
+
+                ranked_trials.append((max_rank, nct_number, nct_id))
+
+        # 排序：
+        # 1️⃣ Phase rank 由高到低
+        # 2️⃣ NCT 數字由大到小（較新的 trial 優先）
+        ranked_trials.sort(key=lambda x: (-x[0], -x[1]))
+
+        # 取前 50
+        if ranked_trials:
+            matched_ncts = [x[2] for x in ranked_trials[:50]]
+        else:
+            matched_ncts = matched_ncts[:50]
+
+    print(matched_ncts)
+
     trials = []
 
     for nct_id in matched_ncts:
-        study = get_study_json(nct_id, study_cache)
+        meta = nct_meta.get(nct_id, {})
 
-        phases, overall_status, has_results, last_update_posted = extract_phase_status(study)
+        phases = meta.get("phase", "")
+        overall_status = meta.get("overall_status", "")
+        last_update_posted = meta.get("last_update_posted", "")
 
         pmids = search_pubmed_by_nct(nct_id, top_n=5)
         pubmed_records = fetch_pubmed_records(pmids) if pmids else []
@@ -592,7 +671,7 @@ def process_drug_disease_pair(drug, disease_list, drugs_by_nct, diseases_by_nct)
             "phases": phases,
             "results_category": categorize_trial(
                 overall_status,
-                has_results,
+                has_results=False,
                 pmid_found=bool(pmids)
             )
         }
@@ -604,7 +683,6 @@ def process_drug_disease_pair(drug, disease_list, drugs_by_nct, diseases_by_nct)
         trials.append(record)
 
     return trials
-
 
 def load_prompt_template(prompt_file):
     with open(prompt_file, encoding="utf-8") as f:
@@ -625,6 +703,8 @@ def build_prompt(prompt_template, drug, disease, evidence_json):
 # ======================
 def main(input_tsv, output_gpt_jsonl, prompt_file):
 
+    nct_meta = load_nct_metadata()
+    
     CATEGORIZATION_FIELDS = [
         "FDA-Approved",
         "FDA-Approved Indication",
@@ -684,11 +764,12 @@ def main(input_tsv, output_gpt_jsonl, prompt_file):
             # Step 1: Collect trial evidence
             # =============================
             trials = process_drug_disease_pair(
-                drug,
-                disease_list,
-                drugs_by_nct,
-                diseases_by_nct
-            )
+                    drug,
+                    disease_list,
+                    drugs_by_nct,
+                    diseases_by_nct,
+                    nct_meta
+                )
 
             if trials:
                 evidence_obj = {
