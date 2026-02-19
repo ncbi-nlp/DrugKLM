@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import argparse
 import csv
 import sys
@@ -40,9 +41,70 @@ CATEGORY_NAME_MAP = {
     17: "Rarely discussed / insufficient evidence (for [Disease])"
 }
 
+DISEASE_SYNONYM_CACHE = {}
+
 # ======================
 # Azure OpenAI helpers
 # ======================
+def generate_disease_synonyms(client, deployment_name, disease_name):
+    """
+    Ask GPT-5 to generate disease synonyms and subtype synonyms.
+    Return a list of unique disease names.
+    """
+
+    prompt = f"""
+You are a biomedical terminology assistant.
+
+Given the disease:
+
+{disease_name}
+
+Generate clinically relevant disease names including:
+
+1. Exact disease synonyms
+2. Widely used clinical abbreviations
+3. Major research-relevant subtypes that are:
+   - Commonly used in ClinicalTrials.gov
+   - Frequently used in PubMed article titles
+
+Rules:
+- Include only disease entity names used in clinical research.
+- Exclude rare pathological descriptions.
+- Exclude long descriptive phrases ending with "of the pancreas".
+- Exclude highly specific histologic variants rarely used in trials.
+- Do NOT include biomarkers, mutations, or drug names.
+- Keep entries concise.
+
+Return ONLY valid JSON:
+
+{{
+  "disease_list": ["name1", "name2", ...]
+}}
+"""
+
+
+    # Use unified GPT-5 caller
+    raw_response = call_azure_gpt5(
+        client,
+        deployment_name,
+        prompt
+    )
+
+    parsed = safe_parse_json(raw_response)
+
+    if "disease_list" not in parsed:
+        print("Synonym generation failed:", parsed)
+        return [disease_name]
+
+    disease_list = parsed["disease_list"]
+
+    if disease_name not in disease_list:
+        disease_list.append(disease_name)
+
+    print(disease_list)
+    return sorted(set(x.lower().strip() for x in disease_list if x))
+
+
 def load_azure_openai_config(param_file="parameter.gpt4o.real.txt"):
     """
     Expected keys (tab or = separated):
@@ -176,6 +238,98 @@ def categorize_trial(overall_status, has_results, pmid_found):
 # ======================
 # PubMed helpers
 # ======================
+def search_pubmed_by_drug_disease_union(drug, disease_list, top_n=5):
+    """
+    Try full union query first (no field restriction).
+    If fails or returns no results, fallback to top 20 terms.
+    """
+
+    if not disease_list:
+        return None
+
+    # Clean disease terms
+    clean_terms = []
+
+    for d in disease_list:
+        if len(d) <= 3:
+            continue
+
+        # remove all parentheses and their content
+        d = re.sub(r"\(.*?\)", "", d)
+
+        # remove quotes
+        d = d.replace('"', '')
+
+        # normalize whitespace
+        d = " ".join(d.split()).strip()
+
+        if d:
+            clean_terms.append(d)
+
+    if not clean_terms:
+        return None
+
+    safe_drug = drug.replace('"', '').strip()
+
+    # ----------------------------
+    # FULL QUERY (all terms)
+    # ----------------------------
+    disease_query_full = " OR ".join(
+        f'"{d}"'
+        for d in clean_terms
+    )
+
+    full_query = f'"{safe_drug}" AND ({disease_query_full})'
+
+    search_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
+
+    params = {
+        "db": "pubmed",
+        "term": full_query,
+        "sort": "pub+date",
+        "retmax": top_n,
+        "retmode": "json",
+        "email": EMAIL,
+        "tool": TOOL
+    }
+
+    try:
+        # Use POST to avoid URL length issues
+        r = PUBMED_SESSION.post(search_url, data=params)
+        r.raise_for_status()
+        data = r.json()
+        pmids = data.get("esearchresult", {}).get("idlist", [])
+        print(pmids)
+        
+        if pmids:
+            return pmids[0]
+
+    except Exception:
+        pass
+
+    # ----------------------------
+    # FALLBACK TOP 20
+    # ----------------------------
+    limited_terms = clean_terms[:20]
+
+    disease_query_limited = " OR ".join(
+        f'"{d}"'
+        for d in limited_terms
+    )
+
+    fallback_query = f'"{safe_drug}" AND ({disease_query_limited})'
+
+    params["term"] = fallback_query
+
+    try:
+        r = PUBMED_SESSION.post(search_url, data=params)
+        r.raise_for_status()
+        data = r.json()
+        return data.get("esearchresult", {}).get("idlist", [None])[0]
+    except Exception:
+        return None
+
+
 def search_pubmed_by_drug_disease(drug, disease, top_n=5):
     """
     Search PubMed using drug + disease keywords,
@@ -379,14 +533,11 @@ def load_fda_labels(labels_tsv: str = FDA_LABELS_TSV):
     return name2rows
 
 
-def fda_label_match(drug: str, disease: str, name2rows) -> dict:
-    """
-    Apply FDA label matching rules.
-    """
-    drug_key = _norm_text(drug)
-    disease_key = _norm_text(disease)
+def fda_label_match(drug: str, disease_list: list, name2rows) -> dict:
 
+    drug_key = _norm_text(drug)
     rows = name2rows.get(drug_key, [])
+
     if not rows:
         return {
             "drug_matched": False,
@@ -396,16 +547,17 @@ def fda_label_match(drug: str, disease: str, name2rows) -> dict:
         }
 
     for r in rows:
-        indication = r.get("indications_and_usage", "") or ""
-        if disease_key and disease_key in _norm_text(indication):
-            return {
-                "drug_matched": True,
-                "disease_in_indication": True,
-                "matched_rows": len(rows),
-                "indication_text": indication
-            }
+        indication_norm = _norm_text(r.get("indications_and_usage", ""))
 
-    # matched drug but disease not in indication
+        for synonym in disease_list:
+            if synonym in indication_norm:
+                return {
+                    "drug_matched": True,
+                    "disease_in_indication": True,
+                    "matched_rows": len(rows),
+                    "indication_text": r.get("indications_and_usage", "")
+                }
+
     return {
         "drug_matched": True,
         "disease_in_indication": False,
@@ -413,18 +565,17 @@ def fda_label_match(drug: str, disease: str, name2rows) -> dict:
         "indication_text": rows[0].get("indications_and_usage", "")
     }
 
-
-
-def process_drug_disease_pair(drug, disease, drugs_by_nct, diseases_by_nct):
+def process_drug_disease_pair(drug, disease_list, drugs_by_nct, diseases_by_nct):
     drug_l = drug.lower()
-    disease_l = disease.lower()
 
     matched_ncts = sorted(
         nct for nct in drugs_by_nct
         if any(drug_l in d.lower() for d in drugs_by_nct[nct])
-        and any(disease_l in d.lower() for d in diseases_by_nct.get(nct, []))
+        and any(
+            any(synonym in mesh_l for synonym in disease_list)
+            for mesh_l in (m.lower() for m in diseases_by_nct.get(nct, []))
+        )
     )
-
     study_cache = {}
     trials = []
 
@@ -487,6 +638,14 @@ def main(input_tsv, output_gpt_jsonl, prompt_file):
         "Reference"
     ]
 
+    if os.path.exists("disease_synonym_cache.json"):
+        with open("disease_synonym_cache.json", encoding="utf-8") as f:
+            DISEASE_SYNONYM_CACHE.update(json.load(f))
+    for k in list(DISEASE_SYNONYM_CACHE.keys()):
+        DISEASE_SYNONYM_CACHE[k] = [
+            x.lower() for x in DISEASE_SYNONYM_CACHE[k]
+        ]
+    
     print("Loading drugs / diseases...")
     drugs_by_nct = load_all_drugs()
     diseases_by_nct = load_all_diseases()
@@ -513,31 +672,53 @@ def main(input_tsv, output_gpt_jsonl, prompt_file):
             print(f"[{i}] {disease} | {drug}")
 
             # =============================
+            # Step 0: Disease synonym expansion (cached)
+            # =============================
+            if disease not in DISEASE_SYNONYM_CACHE:
+                disease_list = generate_disease_synonyms(
+                    azure_config,
+                    azure_config["DEPLOYMENT_NAME"],
+                    disease
+                )
+                DISEASE_SYNONYM_CACHE[disease] = disease_list
+            else:
+                disease_list = DISEASE_SYNONYM_CACHE[disease]
+                
+            # =============================
             # Step 1: Collect trial evidence
             # =============================
             trials = process_drug_disease_pair(
-                drug, disease, drugs_by_nct, diseases_by_nct
+                drug,
+                disease_list,
+                drugs_by_nct,
+                diseases_by_nct
             )
 
-            if not trials:
-                pmids = search_pubmed_by_drug_disease(drug, disease, top_n=5)
-                pubmed_records = fetch_pubmed_records(pmids) if pmids else []
-                evidence_obj = {
-                    "input_disease": disease,
-                    "input_drug": drug,
-                    "pubmed": pubmed_records
-                }
-            else:
+            if trials:
                 evidence_obj = {
                     "input_disease": disease,
                     "input_drug": drug,
                     "trials": trials
                 }
+            else:
+                pmids = search_pubmed_by_drug_disease_union(
+                    drug,
+                    disease_list,
+                    top_n=5
+                )
+
+                pubmed_records = fetch_pubmed_records(pmids) if pmids else []
+
+                evidence_obj = {
+                    "input_disease": disease,
+                    "input_drug": drug,
+                    "pubmed": pubmed_records
+                }
 
             # =============================
             # Step 2: FDA label rule (before GPT)
             # =============================
-            label_hit = fda_label_match(drug, disease, fda_name2rows)
+            label_hit = fda_label_match(drug, disease_list, fda_name2rows)
 
             if label_hit["drug_matched"]:
                 evidence_obj["fda_label_info"] = {
@@ -608,6 +789,26 @@ def main(input_tsv, output_gpt_jsonl, prompt_file):
 
             writer.writerow(row)
             fout.flush()
+
+    # Clean all ( ... ) from synonym cache before saving
+    for disease_key in list(DISEASE_SYNONYM_CACHE.keys()):
+        cleaned_list = []
+
+        for d in DISEASE_SYNONYM_CACHE[disease_key]:
+            # Remove parentheses and content
+            d = re.sub(r"\(.*?\)", "", d)
+
+            # Normalize whitespace
+            d = " ".join(d.split()).strip()
+
+            if d:
+                cleaned_list.append(d.lower())
+
+        # Deduplicate
+        DISEASE_SYNONYM_CACHE[disease_key] = sorted(set(cleaned_list))
+
+    with open("disease_synonym_cache.json", "w", encoding="utf-8") as f:
+        json.dump(DISEASE_SYNONYM_CACHE, f, ensure_ascii=False, indent=2)
 
 
 if __name__ == "__main__":
