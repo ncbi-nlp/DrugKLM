@@ -262,7 +262,7 @@ def ask_gpt(messages, params):
         model=deployment_name,
         messages=messages,
         temperature=0,
-        max_tokens=2048
+        max_completion_tokens=2048
     )
     return response.choices[0].message.content
 

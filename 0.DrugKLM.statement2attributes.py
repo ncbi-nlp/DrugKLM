@@ -93,7 +93,7 @@ def azure_chat_complete(
     api_version: str,
     prompt_text: str,
     temperature: float = 0.0,
-    max_tokens: int = 2048,
+    max_completion_tokens: int = 2048,
     retries: int = 3,
     delay_sec: float = 2.0,
 ) -> str:
@@ -109,10 +109,9 @@ def azure_chat_complete(
             {"role": "user", "content": prompt_text},
         ],
         "temperature": temperature,
-        "max_tokens": max_tokens,
+        "max_completion_tokens": max_completion_tokens,
         "n": 1,
-        # If supported by your Azure API version/deployment, enforce JSON output
-        "response_format": {"type": "json_object"}
+        "response_format": {"type": "json_object"},
     }
 
     for i in range(retries + 1):
@@ -260,7 +259,8 @@ def main():
     ap.add_argument("--prompt", type=str, required=True, help="Prompt template path")
     ap.add_argument("--out", type=str, required=False, help="Optional output JSON path")
     ap.add_argument("--temperature", type=float, default=0.0)
-    ap.add_argument("--max_tokens", type=int, default=2048)
+    ap.add_argument("--max_completion_tokens", type=int, default=2048)
+    ap.add_argument("--max_tokens", type=int, default=None, help="Backward-compatible alias")
 
     # MedCPT options
     ap.add_argument("--medcpt_embeddings", type=str, required=False,
@@ -280,6 +280,10 @@ def main():
     prompt_text = build_prompt(args.prompt, statement)
 
     # Azure call
+    max_completion_tokens = args.max_completion_tokens
+    if args.max_tokens is not None:
+        max_completion_tokens = args.max_tokens
+
     content = azure_chat_complete(
         endpoint=params["AZURE_OPENAI_ENDPOINT"],
         api_key=params["AZURE_OPENAI_API_KEY"],
@@ -287,7 +291,7 @@ def main():
         api_version=params["AZURE_OPENAI_API_VERSION"],
         prompt_text=prompt_text,
         temperature=args.temperature,
-        max_tokens=args.max_tokens,
+        max_completion_tokens=max_completion_tokens,
     )
 
     # Parse model JSON

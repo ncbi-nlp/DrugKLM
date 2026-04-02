@@ -18,6 +18,7 @@ INTERVENTION_OTHER_NAMES = "DB/ClinicalTrials/intervention_other_names.txt"
 INTERVENTIONS = "DB/ClinicalTrials/interventions.txt"
 BROWSE_CONDITIONS = "DB/ClinicalTrials/browse_conditions.txt"
 NCT_META_FILE = "DB/ClinicalTrials/nct_phase_studytype.txt"
+FDA_LABELS_TSV = "DB/FDA-approved/labels.tsv"
 
 PUBMED_SESSION = requests.Session()
 PUBMED_SLEEP_SEC = 0.4
@@ -152,6 +153,7 @@ def call_azure_gpt4o(prompt_text, config):
             {"role": "user", "content": prompt_text},
         ],
         "temperature": 0,
+        "max_completion_tokens": 2048
     }
 
     r = requests.post(url, headers=headers, json=payload, timeout=60)
@@ -510,9 +512,6 @@ def load_all_diseases():
 # ======================
 # FDA-approved labels helpers
 # ======================
-FDA_LABELS_TSV = "DB/FDA-approved/labels.tsv"
-
-
 def _norm_text(s: str) -> str:
     """Normalize text for case-insensitive exact match. Keep it simple and deterministic."""
     if s is None:

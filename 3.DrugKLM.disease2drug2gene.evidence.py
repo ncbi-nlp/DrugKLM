@@ -235,7 +235,7 @@ def load_parameters(param_file):
                 params[key] = value
     return params
 
-def ask_gpt(messages, params, max_tokens=4096, max_retries: int = 8):
+def ask_gpt(messages, params, max_completion_tokens=4096, max_retries: int = 8):
     """
     Robust wrapper to call Azure OpenAI Chat Completions with retry.
     Retries on transient network errors and HTTP 429 (rate limit).
@@ -244,7 +244,7 @@ def ask_gpt(messages, params, max_tokens=4096, max_retries: int = 8):
     Args:
         messages: list of chat messages
         params: dict containing AZURE_OPENAI_ENDPOINT, API_KEY, API_VERSION, DEPLOYMENT_NAME
-        max_tokens: response token cap
+        max_completion_tokens: response token cap
         max_retries: maximum retry attempts (including the first try)
     """
     # Prepare Azure OpenAI client (outside retry loop is fine)
@@ -274,7 +274,7 @@ def ask_gpt(messages, params, max_tokens=4096, max_retries: int = 8):
                 model=deployment_name,
                 messages=messages,
                 temperature=0,
-                max_tokens=max_tokens
+                max_completion_tokens=max_completion_tokens
             )
             return response.choices[0].message.content
 
@@ -946,7 +946,7 @@ def call_gpt_for_topk(all_gene_evidence: List[dict], drug_name: str, disease_nam
                 [{"role": "system", "content": "You are a helpful assistant."},
                  {"role": "user", "content": prompt}],
                 params,
-                max_tokens=4096
+                max_completion_tokens=4096
             )
             break  # success
         except Exception as e:
@@ -1014,7 +1014,7 @@ def call_gpt_for_summaries(top_gene_evidence: List[dict], drug_name: str, diseas
                 [{"role": "system", "content": "You are a helpful assistant."},
                  {"role": "user", "content": prompt}],
                 params,
-                max_tokens=4096
+                max_completion_tokens=4096
             )
             break  # success
         except Exception as e:

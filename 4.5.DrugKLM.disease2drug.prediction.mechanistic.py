@@ -58,7 +58,7 @@ def ask_gpt(client, deployment, system_prompt, user_prompt, max_tokens=2048):
             {"role": "user", "content": user_prompt}
         ],
         temperature=0,
-        max_tokens=max_tokens
+        max_completion_tokens=max_tokens
     )
     return resp.choices[0].message.content
 

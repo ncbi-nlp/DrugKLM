@@ -45,7 +45,7 @@ def azure_chat_complete(params: Dict[str, str],
             {"role": "user", "content": prompt_text},
         ],
         "temperature": temperature,
-        "max_tokens": max_tokens,
+        "max_completion_tokens": max_tokens,
         "n": 1,
     }
 
