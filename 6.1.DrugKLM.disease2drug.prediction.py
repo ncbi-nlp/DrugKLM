@@ -19,8 +19,9 @@ import openai
 
 def init_azure_client(param_file: str):
     """
-    Initialize Azure OpenAI client using a param TSV file with keys:
-    AZURE_OPENAI_ENDPOINT, API_VERSION, DEPLOYMENT_NAME, API_KEY
+    Initialize an OpenAI-compatible client using a param TSV file.
+    Auto-detects backend: OpenAI if OPENAI_API_KEY present, else Azure.
+    Returns (client, model_name).
     """
     params = {}
     with open(param_file, "r", encoding="utf-8") as f:
@@ -29,6 +30,14 @@ def init_azure_client(param_file: str):
                 continue
             k, v = line.rstrip("\n").split("\t", 1)
             params[k] = v
+
+    if params.get("OPENAI_API_KEY") and not params.get("AZURE_OPENAI_ENDPOINT"):
+        client = openai.OpenAI(
+            api_key=params["OPENAI_API_KEY"],
+            base_url=params.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        )
+        model = params.get("OPENAI_MODEL") or params.get("MODEL") or "gpt-4o"
+        return client, model
 
     endpoint = params["AZURE_OPENAI_ENDPOINT"]
     version  = params["API_VERSION"]

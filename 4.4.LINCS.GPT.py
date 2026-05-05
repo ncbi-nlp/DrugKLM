@@ -47,6 +47,9 @@ def read_params_tsv(path: str) -> Dict[str, str]:
             parts = line.split("\t")
             if len(parts) >= 2:
                 kv[parts[0].strip()] = "\t".join(parts[1:]).strip()
+    # Accept either OpenAI- or Azure-mode credentials.
+    if kv.get("OPENAI_API_KEY") and not kv.get("AZURE_OPENAI_ENDPOINT"):
+        return kv
     required = ["API_KEY", "API_VERSION", "AZURE_OPENAI_ENDPOINT", "DEPLOYMENT_NAME"]
     missing = [k for k in required if not kv.get(k)]
     if missing:
@@ -191,24 +194,44 @@ def azure_chat_complete(
 
     Args keep backward compatibility with original signature.
     """
-    url = (
-        params["AZURE_OPENAI_ENDPOINT"].rstrip("/")
-        + f"/openai/deployments/{params['DEPLOYMENT_NAME']}/chat/completions"
-        + f"?api-version={params['API_VERSION']}"
-    )
-    headers = {
-        "Content-Type": "application/json",
-        "api-key": params["API_KEY"],
-    }
-    payload = {
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant that outputs STRICT JSON only."},
-            {"role": "user", "content": prompt_text},
-        ],
-        "temperature": temperature,
-        "max_completion_tokens": max_tokens,
-        "n": 1,
-    }
+    # Auto-detect backend: OpenAI if OPENAI_API_KEY set, else Azure.
+    if params.get("OPENAI_API_KEY") and not params.get("AZURE_OPENAI_ENDPOINT"):
+        base_url = params.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+        model = params.get("OPENAI_MODEL") or params.get("MODEL") or "gpt-4o"
+        url = f"{base_url}/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {params['OPENAI_API_KEY']}",
+        }
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant that outputs STRICT JSON only."},
+                {"role": "user", "content": prompt_text},
+            ],
+            "temperature": temperature,
+            "max_completion_tokens": max_tokens,
+            "n": 1,
+        }
+    else:
+        url = (
+            params["AZURE_OPENAI_ENDPOINT"].rstrip("/")
+            + f"/openai/deployments/{params['DEPLOYMENT_NAME']}/chat/completions"
+            + f"?api-version={params['API_VERSION']}"
+        )
+        headers = {
+            "Content-Type": "application/json",
+            "api-key": params["API_KEY"],
+        }
+        payload = {
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant that outputs STRICT JSON only."},
+                {"role": "user", "content": prompt_text},
+            ],
+            "temperature": temperature,
+            "max_completion_tokens": max_tokens,
+            "n": 1,
+        }
 
     def _parse_retry_after(resp) -> float:
         # Retry-After can be seconds or HTTP-date; we only handle seconds here.

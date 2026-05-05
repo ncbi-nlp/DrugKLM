@@ -1,0 +1,34 @@
+# Backups created during the macOS / OpenAI port
+*.bak
+*.bak.azure-only
+*.bak.unquoted
+*.bak.preTimeout
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Bulk data downloaded from NCBI FTP / generated at runtime
+DB/
+HAKE_model/
+MedCPT.npy/
+data/
+pickle/
+input/
+output/
+DrugKLM.db.zip
+
+# Wget / pipeline logs
+wget-log
+.wget-drugklm.log
+.pipeline.log
+.stage3.resume.log
+index.html
+
+# User-generated prompt outputs
+prompts/subtype/
+
+# Local secrets / per-user parameter file
+# (template lives in parameter.gpt4o.txt; users should copy and populate locally)
+parameter.*.local

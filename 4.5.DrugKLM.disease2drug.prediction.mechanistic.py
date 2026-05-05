@@ -15,7 +15,7 @@ import os
 import json
 import argparse
 from collections import defaultdict
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI
 import re
 
 # --------------------------
@@ -44,6 +44,13 @@ def read_param_file(path):
 
 def init_azure_client(param_file):
     params = read_param_file(param_file)
+    if params.get("OPENAI_API_KEY") and not params.get("AZURE_OPENAI_ENDPOINT"):
+        client = OpenAI(
+            api_key=params["OPENAI_API_KEY"],
+            base_url=params.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        )
+        model = params.get("OPENAI_MODEL") or params.get("MODEL") or "gpt-4o"
+        return client, model
     return AzureOpenAI(
         api_version=params["API_VERSION"],
         azure_endpoint=params["AZURE_OPENAI_ENDPOINT"],

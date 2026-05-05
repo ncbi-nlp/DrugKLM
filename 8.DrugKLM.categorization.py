@@ -125,6 +125,9 @@ def load_azure_openai_config(param_file="parameter.gpt4o.real.txt"):
                 continue
             config[k.strip()] = v.strip()
 
+    # Accept either OpenAI- or Azure-mode credentials.
+    if config.get("OPENAI_API_KEY") and not config.get("AZURE_OPENAI_ENDPOINT"):
+        return config
     required = ["AZURE_OPENAI_ENDPOINT", "API_KEY", "DEPLOYMENT_NAME", "API_VERSION"]
     for k in required:
         if k not in config:
@@ -134,6 +137,27 @@ def load_azure_openai_config(param_file="parameter.gpt4o.real.txt"):
 
 
 def call_azure_gpt4o(prompt_text, config):
+    if config.get("OPENAI_API_KEY") and not config.get("AZURE_OPENAI_ENDPOINT"):
+        base_url = config.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+        model = config.get("OPENAI_MODEL") or config.get("MODEL") or "gpt-4o"
+        url = f"{base_url}/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {config['OPENAI_API_KEY']}",
+        }
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": "You are a careful biomedical evidence classifier."},
+                {"role": "user", "content": prompt_text},
+            ],
+            "temperature": 0,
+            "max_completion_tokens": 2048,
+        }
+        r = requests.post(url, headers=headers, json=payload, timeout=60)
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
+
     endpoint = config["AZURE_OPENAI_ENDPOINT"].rstrip("/")
 
     url = (
