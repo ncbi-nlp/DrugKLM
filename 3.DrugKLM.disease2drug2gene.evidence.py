@@ -32,8 +32,47 @@ from pathlib import Path
 import time
 import math
 import random
+import signal as _signal
+import contextlib as _contextlib
 from typing import List, Dict, Tuple, Set, Iterable, Optional
 import pandas as pd
+
+# Per-drug watchdog: aborts processing of any single drug that takes longer than this.
+# Override with: DRUGKLM_DRUG_WATCHDOG_SEC=600 python 3.DrugKLM... (default 300s = 5min).
+DRUG_WATCHDOG_SEC = int(os.environ.get('DRUGKLM_DRUG_WATCHDOG_SEC', '300'))
+
+
+class _DrugTimeoutError(Exception):
+    """Raised by the per-drug watchdog when SIGALRM fires."""
+
+
+@_contextlib.contextmanager
+def _drug_watchdog(seconds: int):
+    """
+    Send SIGALRM to the calling thread after `seconds` and translate it into
+    _DrugTimeoutError. Restores any prior SIGALRM handler on exit.
+
+    Caveats:
+    * UNIX-only (relies on signal.SIGALRM); Windows would need a different impl.
+    * Must be used from the main thread (signals only deliver there).
+    * If a C extension call is in progress, the signal is delivered when control
+      returns to Python, which is fine for `requests`/network calls.
+    """
+    if seconds <= 0:
+        # Disabled
+        yield
+        return
+
+    def _h(signum, frame):
+        raise _DrugTimeoutError(f"per-drug watchdog fired after {seconds}s")
+
+    old_handler = _signal.signal(_signal.SIGALRM, _h)
+    _signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        _signal.alarm(0)
+        _signal.signal(_signal.SIGALRM, old_handler)
 
 # -----------------------
 # Paths for embeddings / dicts (same as your originals)
@@ -230,9 +269,13 @@ def load_parameters(param_file):
     params = {}
     with open(param_file, "r", encoding="utf-8") as f:
         for line in f:
-            if line.strip():
-                key, value = line.strip().split("\t")
-                params[key] = value
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "\t" not in line:
+                continue
+            key, value = line.split("\t", 1)
+            params[key.strip()] = value.strip()
     return params
 
 def ask_gpt(messages, params, max_completion_tokens=4096, max_retries: int = 8):
@@ -247,18 +290,25 @@ def ask_gpt(messages, params, max_completion_tokens=4096, max_retries: int = 8):
         max_completion_tokens: response token cap
         max_retries: maximum retry attempts (including the first try)
     """
-    # Prepare Azure OpenAI client (outside retry loop is fine)
-    openai.api_type = "azure"
-    openai.api_base = params["AZURE_OPENAI_ENDPOINT"]
-    openai.api_key = params["API_KEY"]
-    openai.api_version = params["API_VERSION"]
-    deployment_name = params["DEPLOYMENT_NAME"]
-
-    client = openai.AzureOpenAI(
-        api_key=params["API_KEY"],
-        api_version=params["API_VERSION"],
-        azure_endpoint=params["AZURE_OPENAI_ENDPOINT"]
-    )
+    # Prepare client based on backend (auto-detect: OpenAI if OPENAI_API_KEY set,
+    # otherwise Azure). Done once outside the retry loop.
+    if params.get("OPENAI_API_KEY") and not params.get("AZURE_OPENAI_ENDPOINT"):
+        client = openai.OpenAI(
+            api_key=params["OPENAI_API_KEY"],
+            base_url=params.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        )
+        deployment_name = params.get("OPENAI_MODEL") or params.get("MODEL") or "gpt-4o"
+    else:
+        openai.api_type = "azure"
+        openai.api_base = params["AZURE_OPENAI_ENDPOINT"]
+        openai.api_key = params["API_KEY"]
+        openai.api_version = params["API_VERSION"]
+        deployment_name = params["DEPLOYMENT_NAME"]
+        client = openai.AzureOpenAI(
+            api_key=params["API_KEY"],
+            api_version=params["API_VERSION"],
+            azure_endpoint=params["AZURE_OPENAI_ENDPOINT"]
+        )
 
     # Import exception classes defensively (older SDKs may not have all)
     RateLimitError = getattr(openai, "RateLimitError", Exception)
@@ -1118,7 +1168,9 @@ def main():
         #exit(1)
         if os.path.exists(out_path):
             print(f"[SKIP] Output file already exists for {drug_name}: {out_path}")
-        else:
+            continue
+        try:
+          with _drug_watchdog(DRUG_WATCHDOG_SEC):
             print("[INFO] ({}/{}) Processing drug: {}".format(i, len(uniq_drugs), drug_name))
 
             # 1) load candidates
@@ -1396,6 +1448,27 @@ def main():
             if len(final_genes) < args.topk:
                 print(f"[WARN] Only {len(final_genes)} genes with evidence available (requested K={args.topk}).")
             print(f"Done. Wrote {n_out} rows to {out_path}.")
+        except _DrugTimeoutError:
+            print(f"[WATCHDOG] Drug '{drug_name}' exceeded {DRUG_WATCHDOG_SEC}s; skipping. "
+                  f"Increase the cap with DRUGKLM_DRUG_WATCHDOG_SEC env var.",
+                  flush=True)
+            # Best-effort cleanup of any partially-written output file.
+            try:
+                if os.path.exists(out_path):
+                    os.remove(out_path)
+            except OSError:
+                pass
+            continue
+        except Exception as exc:
+            # Non-timeout error: log and move on so one drug can't kill the run.
+            print(f"[ERROR] Drug '{drug_name}' raised {type(exc).__name__}: {exc}; skipping.",
+                  flush=True)
+            try:
+                if os.path.exists(out_path):
+                    os.remove(out_path)
+            except OSError:
+                pass
+            continue
 
 
 if __name__ == "__main__":

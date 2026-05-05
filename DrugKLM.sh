@@ -23,7 +23,21 @@ Disease=$1
 echo "Running DrugKLM pipeline for disease: ${Disease}"
 
 # Save disease name as a single-line input file
-echo "${Disease}" > input/${Disease}.txt
+
+# --- pre-create all output subdirectories the pipeline expects ---
+mkdir -p input output \
+  "output/disease2drug" \
+  "output/disease2gene" \
+  "output/drug2gene/${Disease}" \
+  "output/LINCS/${Disease}" \
+  "output/LINCS_enrich/${Disease}" \
+  "output/LINCS_enrich_summary" \
+  "output/LINCS_enrich_summary_mechanistic/${Disease}" \
+  "output/final_input/${Disease}" \
+  "output/final_prediction/${Disease}"
+# --- end ---
+
+echo "${Disease}" > input/"${Disease}".txt
 
 
 ###############################################################################
@@ -32,12 +46,12 @@ echo "${Disease}" > input/${Disease}.txt
 #    - Use MedCPT embeddings for disease normalization
 ###############################################################################
 python 0.DrugKLM.statement2attributes.py \
-  --infile input/${Disease}.txt \
+  --infile input/"${Disease}".txt \
   --param_file parameter.gpt4o.txt \
   --prompt prompts/0.Statement2Attributes.txt \
   --medcpt_embeddings MedCPT.npy/disease_embeddings.npy \
   --medcpt_index MedCPT.npy/disease_index.tsv \
-  --out input/${Disease}.json
+  --out input/"${Disease}".json
 
 
 ###############################################################################
@@ -46,8 +60,8 @@ python 0.DrugKLM.statement2attributes.py \
 #    - No ranking yet, recall-oriented
 ###############################################################################
 python 1.DrugKLM.disease2drug.candidate.py \
-  --json_input input/${Disease}.json \
-  --output output/disease2drug/${Disease}.disease2drug.candidate.jsonl
+  --json_input input/"${Disease}".json \
+  --output output/disease2drug/"${Disease}".disease2drug.candidate.jsonl
 
 
 ###############################################################################
@@ -55,8 +69,8 @@ python 1.DrugKLM.disease2drug.candidate.py \
 #    - Retrieve disease-associated genes for downstream evidence matching
 ###############################################################################
 python 2.DrugKLM.disease2gene.candidate.py \
-  --json_input input/${Disease}.json \
-  --output output/disease2gene/${Disease}.disease2gene.candidate.jsonl
+  --json_input input/"${Disease}".json \
+  --output output/disease2gene/"${Disease}".disease2gene.candidate.jsonl
 
 
 ###############################################################################
@@ -66,15 +80,15 @@ python 2.DrugKLM.disease2gene.candidate.py \
 #    - GPT-based ranking of drug–gene relevance
 ###############################################################################
 python 3.DrugKLM.disease2drug2gene.evidence.py \
-  --input output/disease2drug/${Disease}.disease2drug.candidate.jsonl \
-  --disease2gene_candidate_json output/disease2gene/${Disease}.disease2gene.candidate.jsonl \
+  --input output/disease2drug/"${Disease}".disease2drug.candidate.jsonl \
+  --disease2gene_candidate_json output/disease2gene/"${Disease}".disease2gene.candidate.jsonl \
   --ctd_tsv DB/DrugGeneRelationEvdience.CTD.tsv \
   --pubtator_tsv DB/DrugGeneRelationEvdience.PubTator3.tsv \
   --dgidb_tsv DB/DrugGeneRelationEvdience.dgidb.drug2genes.tsv \
   --lincs_tsv DB/DrugGeneRelationEvdience.LINCS.cp_coeff.tsv \
   --prompt_topk prompts/3.GPT4DrugGene.Ranking.txt \
-  --disease_detail_json input/${Disease}.json \
-  --output_folder output/drug2gene/${Disease}
+  --disease_detail_json input/"${Disease}".json \
+  --output_folder output/drug2gene/"${Disease}"
 
 
 ###############################################################################
@@ -82,7 +96,7 @@ python 3.DrugKLM.disease2drug2gene.evidence.py \
 ###############################################################################
 
 # Create disease-specific LINCS output folder
-mkdir -p output/LINCS/${Disease}
+mkdir -p output/LINCS/"${Disease}"
 
 
 ########################################
@@ -91,13 +105,13 @@ mkdir -p output/LINCS/${Disease}
 #     - Integrate GDSC / CCLE drug response
 ########################################
 python 4.1.LINCS.search.py \
-  --input_json input/${Disease}.json \
+  --input_json input/"${Disease}".json \
   --mapping_jsonl DB/cell2disease.merge.LINCS.variants.jsonl \
   --gmt_folder DB/LINCS/gmt \
   --gdsc_file2 DB/GDSC/GDSC2_fitted_dose_response_27Oct23.csv \
   --gdsc_file1 DB/GDSC/GDSC1_fitted_dose_response_27Oct23.csv \
   --ccle_file DB/CCLE/DrugResponse.txt \
-  --output output/LINCS/${Disease}/LINCS.search.${Disease}.cell2gene.tsv
+  --output output/LINCS/"${Disease}"/LINCS.search."${Disease}".cell2gene.tsv
 
 
 ########################################
@@ -106,10 +120,10 @@ python 4.1.LINCS.search.py \
 #     - IC50 weighted higher than dosage
 ########################################
 python 4.2.LINCS.rank.py \
-  --input output/LINCS/${Disease}/LINCS.search.${Disease}.cell2gene.tsv \
-  --candidate_json output/disease2drug/${Disease}.disease2drug.candidate.jsonl \
-  --output output/LINCS/${Disease}/LINCS.search.${Disease}.rank.tsv \
-  --detailed_output output/LINCS/${Disease}/LINCS.search.${Disease}.rank.detailed.tsv \
+  --input output/LINCS/"${Disease}"/LINCS.search."${Disease}".cell2gene.tsv \
+  --candidate_json output/disease2drug/"${Disease}".disease2drug.candidate.jsonl \
+  --output output/LINCS/"${Disease}"/LINCS.search."${Disease}".rank.tsv \
+  --detailed_output output/LINCS/"${Disease}"/LINCS.search."${Disease}".rank.detailed.tsv \
   --top_n 200 \
   --dose_weight 0.2 \
   --ic50_weight 0.8 \
@@ -122,11 +136,11 @@ python 4.2.LINCS.rank.py \
 #     - GO BP + KEGG
 ########################################
 python 4.3.LINCS.enrich.py \
-  --input output/LINCS/${Disease}/LINCS.search.${Disease}.rank.tsv \
+  --input output/LINCS/"${Disease}"/LINCS.search."${Disease}".rank.tsv \
   --species Human \
   --dbs GO_Biological_Process_2021 KEGG_2021_Human \
   --p_cutoff 0.05 \
-  --outdir output/LINCS_enrich/${Disease}
+  --outdir output/LINCS_enrich/"${Disease}"
 
 
 ########################################
@@ -135,12 +149,12 @@ python 4.3.LINCS.enrich.py \
 #       disease-relevant mechanistic narratives
 ########################################
 python 4.4.LINCS.GPT.py \
-  --disease ${Disease} \
-  --rank_tsv output/LINCS/${Disease}/LINCS.search.${Disease}.rank.tsv \
-  --gsea_dir output/LINCS_enrich/${Disease} \
+  --disease "${Disease}" \
+  --rank_tsv output/LINCS/"${Disease}"/LINCS.search."${Disease}".rank.tsv \
+  --gsea_dir output/LINCS_enrich/"${Disease}" \
   --prompt prompts/4.4.GSEA_Summarizer.txt \
   --param_file parameter.gpt4o.txt \
-  --output output/LINCS_enrich_summary/${Disease}.GSEA.summary.jsonl
+  --output output/LINCS_enrich_summary/"${Disease}".GSEA.summary.jsonl
 
 
 ########################################
@@ -148,10 +162,10 @@ python 4.4.LINCS.GPT.py \
 #     - Infer drug mechanisms from GSEA summaries
 ########################################
 python 4.5.DrugKLM.disease2drug.prediction.mechanistic.py \
-  --summary_file output/LINCS_enrich_summary/${Disease}.GSEA.summary.jsonl \
+  --summary_file output/LINCS_enrich_summary/"${Disease}".GSEA.summary.jsonl \
   --prompt_file prompts/4.5.GSEA_Summarizer.mechanistic.txt \
   --param_file parameter.gpt4o.txt \
-  --out_dir output/LINCS_enrich_summary_mechanistic/${Disease}
+  --out_dir output/LINCS_enrich_summary_mechanistic/"${Disease}"
 
 
 ###############################################################################
@@ -163,10 +177,10 @@ python 4.5.DrugKLM.disease2drug.prediction.mechanistic.py \
 #     - Combine KG, literature, LINCS, GSEA
 ########################################
 python 5.DrugKLM.disease2drug.Summarization.py \
-  --disease2drug_jsonl output/disease2drug/${Disease}.disease2drug.candidate.jsonl \
-  --drug2gene_dir output/drug2gene/${Disease} \
-  --gsea_dir output/LINCS_enrich_summary_mechanistic/${Disease} \
-  --out_dir output/final_input/${Disease}
+  --disease2drug_jsonl output/disease2drug/"${Disease}".disease2drug.candidate.jsonl \
+  --drug2gene_dir output/drug2gene/"${Disease}" \
+  --gsea_dir output/LINCS_enrich_summary_mechanistic/"${Disease}" \
+  --out_dir output/final_input/"${Disease}"
 
 
 ########################################
@@ -174,12 +188,12 @@ python 5.DrugKLM.disease2drug.Summarization.py \
 #     - LLM-based disease stratification
 ########################################
 python 6.0.DrugKLM.disease2drug.subtype_generation.py \
-  --disease input/${Disease}.json \
+  --disease input/"${Disease}".json \
   --prompt prompts/6.0.SubtypeGeneration.txt \
   --list_prompt prompts/6.0.SubtypelistGeneration.txt \
   --param_file parameter.gpt4o.txt \
-  --output prompts/subtype/${Disease}.subtype.statement.txt \
-  --output_list prompts/subtype/${Disease}.subtype.txt
+  --output prompts/subtype/"${Disease}".subtype.statement.txt \
+  --output_list prompts/subtype/"${Disease}".subtype.txt
 
 
 ########################################
@@ -187,13 +201,13 @@ python 6.0.DrugKLM.disease2drug.subtype_generation.py \
 #     - Rank drugs per disease subtype
 ########################################
 python 6.1.DrugKLM.disease2drug.prediction.py \
-  --input_dir output/final_input/${Disease} \
+  --input_dir output/final_input/"${Disease}" \
   --prompt_file prompts/6.1.GPT4DrugGene.Final.txt \
   --param_file parameter.gpt4o.txt \
-  --out_dir output/final_prediction/${Disease} \
-  --subtypes_file prompts/subtype/${Disease}.subtype.txt \
-  --subtype_statements_file prompts/subtype/${Disease}.subtype.statement.txt \
-  --json_input input/${Disease}.json
+  --out_dir output/final_prediction/"${Disease}" \
+  --subtypes_file prompts/subtype/"${Disease}".subtype.txt \
+  --subtype_statements_file prompts/subtype/"${Disease}".subtype.statement.txt \
+  --json_input input/"${Disease}".json
 
 
 ###############################################################################
@@ -201,21 +215,21 @@ python 6.1.DrugKLM.disease2drug.prediction.py \
 #    - Convert JSON predictions into TSV
 ###############################################################################
 python 7.DrugKLM.disease2drug.json2tsv.py \
-  --input_folder output/final_prediction/${Disease} \
-  --output_tsv output/${Disease}.final_prediction.tsv
+  --input_folder output/final_prediction/"${Disease}" \
+  --output_tsv output/"${Disease}".final_prediction.tsv
 
 
 ###############################################################################
 # 8. Categorization
 ###############################################################################
 python 8.DrugKLM.categorization.py \
-  --input  output/${Disease}.final_prediction.tsv \
-  --output output/${Disease}.final_prediction.Categorization.tsv \
+  --input  output/"${Disease}".final_prediction.tsv \
+  --output output/"${Disease}".final_prediction.Categorization.tsv \
   --prompt prompts/8.Categorization.txt
 
 python 9.DrugKLM.filtering.py \
-  --input  output/${Disease}.final_prediction.Categorization.tsv \
-  --output output/${Disease}.final_prediction.Categorization.filtered.tsv
+  --input  output/"${Disease}".final_prediction.Categorization.tsv \
+  --output output/"${Disease}".final_prediction.Categorization.filtered.tsv
 
 
 echo "DrugKLM pipeline completed for disease: ${Disease}"

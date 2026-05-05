@@ -276,9 +276,13 @@ def load_parameters(param_file):
     params = {}
     with open(param_file, "r", encoding="utf-8") as f:
         for line in f:
-            if line.strip():
-                key, value = line.strip().split("\t")
-                params[key] = value
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "\t" not in line:
+                continue
+            key, value = line.split("\t", 1)
+            params[key.strip()] = value.strip()
     return params
 
 # 讀取提示模板
@@ -311,17 +315,23 @@ def load_prompt_template(template_path, disease_name, payload):
     
 # 呼叫 GPT 模型
 def ask_gpt(messages, params):
-    openai.api_type = "azure"
-    openai.api_base = params["AZURE_OPENAI_ENDPOINT"]
-    openai.api_key = params["API_KEY"]
-    openai.api_version = params["API_VERSION"]
-    deployment_name = params["DEPLOYMENT_NAME"]
-
-    client = openai.AzureOpenAI(
-        api_key=params["API_KEY"],
-        api_version=params["API_VERSION"],
-        azure_endpoint=params["AZURE_OPENAI_ENDPOINT"]
-    )
+    if params.get("OPENAI_API_KEY") and not params.get("AZURE_OPENAI_ENDPOINT"):
+        client = openai.OpenAI(
+            api_key=params["OPENAI_API_KEY"],
+            base_url=params.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        )
+        deployment_name = params.get("OPENAI_MODEL") or params.get("MODEL") or "gpt-4o"
+    else:
+        openai.api_type = "azure"
+        openai.api_base = params["AZURE_OPENAI_ENDPOINT"]
+        openai.api_key = params["API_KEY"]
+        openai.api_version = params["API_VERSION"]
+        deployment_name = params["DEPLOYMENT_NAME"]
+        client = openai.AzureOpenAI(
+            api_key=params["API_KEY"],
+            api_version=params["API_VERSION"],
+            azure_endpoint=params["AZURE_OPENAI_ENDPOINT"]
+        )
 
     response = client.chat.completions.create(
         model=deployment_name,
