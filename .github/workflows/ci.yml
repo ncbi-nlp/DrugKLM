@@ -1,0 +1,63 @@
+name: ci
+
+# Lightweight CI for a research-grade pipeline whose runtime depends on
+# multi-gigabyte FTP downloads, NCBI APIs, and an OpenAI / Azure OpenAI key.
+# A full end-to-end test is impractical here, so this workflow only catches
+# syntax-level regressions:
+#
+#   * byte-compile every .py to catch SyntaxError before runtime
+#   * ruff E/F errors (syntax + undefined names) — no style nags
+#   * shellcheck the orchestration script at error severity only
+#
+# Runs on every push and on every pull request.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: python syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Byte-compile all Python sources
+        # Skip the .git directory; everything else under repo root is in scope.
+        run: |
+          python -m compileall -q -x '\.git' .
+
+      - name: Install ruff
+        run: pip install --quiet 'ruff==0.6.*'
+
+      - name: Lint (ruff E/F errors only)
+        # E9: runtime-syntax issues; F63/F7/F82: forbidden constructs and
+        # undefined names. Style and complexity rules are deliberately off.
+        run: ruff check --select=E9,F63,F7,F82 --statistics .
+
+  shell:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y shellcheck
+
+      - name: Shellcheck DrugKLM.sh
+        # -S error = fail only on errors; warnings and style/info are reported
+        # but do not block the build, since the upstream script predates this CI.
+        run: shellcheck -S error DrugKLM.sh
