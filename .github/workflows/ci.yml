@@ -40,15 +40,12 @@ jobs:
       - name: Install ruff
         run: pip install --quiet 'ruff==0.6.*'
 
-      - name: Lint (ruff E/F, advisory)
+      - name: Lint (ruff E/F errors only)
         # E9: runtime-syntax issues; F63/F7/F82: forbidden constructs and
         # undefined names. Style and complexity rules are deliberately off.
-        # --exit-zero keeps the step green while still printing findings, so
-        # the CI gate stays "syntax compiles" rather than "zero lint warnings".
-        # Existing baseline: 5 F821s (random in 4.4.LINCS.GPT.py, d2_obj in
-        # 5.DrugKLM.disease2drug.Summarization.py, EMAIL/TOOL in
-        # 8.DrugKLM.categorization.py) — should be fixed in a follow-up PR.
-        run: ruff check --select=E9,F63,F7,F82 --exit-zero --statistics .
+        # Baseline is currently clean; this step is blocking so any new
+        # NameError-class regression fails CI.
+        run: ruff check --select=E9,F63,F7,F82 --statistics .
 
   shell:
     name: shellcheck
