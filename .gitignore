@@ -29,6 +29,8 @@ index.html
 # User-generated prompt outputs
 prompts/subtype/
 
-# Local secrets / per-user parameter file
-# (template lives in parameter.gpt4o.txt; users should copy and populate locally)
+# Local secrets / per-user parameter file.
+# Template is committed as parameter.gpt4o.txt.example; copy that to
+# parameter.gpt4o.txt and populate with your own OpenAI / Azure credentials.
+parameter.gpt4o.txt
 parameter.*.local

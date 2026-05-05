@@ -276,9 +276,13 @@ def load_parameters(param_file):
     params = {}
     with open(param_file, "r", encoding="utf-8") as f:
         for line in f:
-            if line.strip():
-                key, value = line.strip().split("\t")
-                params[key] = value
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "\t" not in line:
+                continue
+            key, value = line.split("\t", 1)
+            params[key.strip()] = value.strip()
     return params
 
 # 讀取提示模板
