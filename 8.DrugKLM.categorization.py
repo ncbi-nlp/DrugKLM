@@ -24,6 +24,12 @@ PUBMED_SESSION = requests.Session()
 PUBMED_SLEEP_SEC = 0.4
 PUBMED_MAX_RETRY = 3
 
+# NCBI E-utilities recommends identifying yourself via `tool` and `email`
+# query parameters so they can contact you about high-volume usage. Set
+# DRUGKLM_PUBMED_EMAIL / DRUGKLM_PUBMED_TOOL env vars to override.
+EMAIL = os.environ.get("DRUGKLM_PUBMED_EMAIL", "drugklm@example.org")
+TOOL = os.environ.get("DRUGKLM_PUBMED_TOOL", "DrugKLM")
+
 CATEGORY_NAME_MAP = {
     1:  "FDA-Approved for [Disease]",
     2:  "Positive results in Phase III (for [Disease])",

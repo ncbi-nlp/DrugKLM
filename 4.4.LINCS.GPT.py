@@ -8,6 +8,7 @@ import argparse
 import csv
 import json
 import os
+import random
 import re
 import sys
 import time

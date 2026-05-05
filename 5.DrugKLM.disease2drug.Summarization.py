@@ -108,7 +108,7 @@ def dedup_join(texts: List[str]) -> str:
 def add_fda_to_d2d(d2d_obj: Dict[str, Any],
                    fda_hits: List[Dict[str, str]],
                    disease_name: str) -> Dict[str, Any]:
-    out = dict(d2_obj)
+    out = dict(d2d_obj)
     if not fda_hits:
         out["FDA-approved"] = False
         out[f"FDA-approved to {disease_name}"] = False
