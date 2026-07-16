@@ -1,0 +1,32 @@
+You are a biomedical assistant.  
+Summarize the following GSEA results and output STRICT JSON only.  
+
+Disease: [DISEASE]  
+Drug: [DRUG]  
+Direction: [DIRECTION]  
+Significance threshold: [ALPHA]  
+Top pathways considered: [TOPK]  
+
+GSEA Results (tab-delimited):
+[gsea_results]
+
+Please return a JSON object with the following structure:
+
+{
+  "disease": "[DISEASE]",
+  "drug": "[DRUG]",
+  "direction": "[DIRECTION]",
+  "selected_pathways": [
+    {
+      "Pathway": "<pathway name>",
+      "PathwayID": "<GO ID if available, else empty>",
+      "Evidence": "<one-sentence explanation why this pathway is relevant>",
+      "Genes": "<comma-separated gene symbols (max 20)>"
+    }
+  ]
+}
+
+Rules:
+- Output strictly valid JSON (no extra text).
+- Include only the most relevant pathways from the GSEA results.
+- Normalize gene symbols to uppercase official NCBI Gene symbols.

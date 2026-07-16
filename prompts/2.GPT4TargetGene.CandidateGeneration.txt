@@ -1,0 +1,23 @@
+Instruction:
+
+We are investigating potential gene targets associated with the disease. Use the following parsed case JSON as primary grounding of the disease.
+
+[JSON_Input]
+
+Please list genes that may mechanistically interact with this case.
+For each gene, briefly explain the biological mechanisms, such as involvement in disease-relevant pathways, regulation of key molecular processes, or genetic associations that could link it to [Disease].
+Please list as many genes as possible. Try to reach 50 genes.
+
+Output Format (per gene):
+
+Gene Name: [name]  
+Please output a valid JSON array in the following format. 
+Do not include any explanation, commentary, or natural language. Output JSON only. Respond with _only_ a valid JSON array (no Markdown, no code fences, no extra text)
+
+Format:
+[
+	{
+		"Gene": [Gene_name],
+		"Mechanism": [Mechanism]
+	}
+]

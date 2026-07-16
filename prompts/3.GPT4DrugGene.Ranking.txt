@@ -1,0 +1,42 @@
+You are ranking candidate genes for the drug [Drug] in the disease context [Disease]. Use the following parsed case JSON as primary grounding of the disease.
+
+[JSON_Input]
+
+Evidence sources per gene may include:
+- CTD (type, pmids)
+- PubTator: machine-extracted drug-gene relation (type, publication count) and highlighted snippets
+- DGIdb: database interactions
+- LINCS: perturbational signatures; treat down-regulation of oncogenic drivers or up-regulation of tumor suppressor pathways as supportive when biologically consistent
+- Knowledge-graph (KG) paths: number and quality of paths; prefer shorter, higher-scoring, disease-relevant relations
+
+Scoring rubric (0-100):
+- Mechanistic relevance to [Disease] hallmarks (apoptosis, proliferation, DNA repair, angiogenesis, immune evasion, etc.), directionally consistent with [Drug] MOA or plausible downstream effect: +0 to +40
+- Cross-source corroboration (signals from 2+ independent sources agreeing in direction/mechanism): +0 to +25
+- Strength of textual/structured evidence (PubTator relation type and publication count; CTD types; DGIdb interaction credibility): +0 to +20
+- KG support (more, shorter, higher-scoring disease-relevant paths): +0 to +10
+- Consistency across sources (no major conflicts): +0 to +5
+Penalties:
+- Conflicting or opposite-direction evidence: -0 to -20
+- Vague, generic cancer signals without disease specificity: -0 to -15
+- Evidence only from one weak source or snippets without clear drug-gene linkage: -0 to -10
+
+Ties: break by (1) higher corroboration, (2) stronger PubTator publications, (3) higher KG path support, then alphabetical.
+
+Task:
+1) Rank all candidate genes by total score (higher is better).
+2) Return EXACTLY [k] genes in order.
+
+Output rules (STRICT):
+- Return ONLY a JSON array of length [k].
+- Each item must be an object:
+  {
+    "Genes":[
+		"<gene symbol exactly as in input>",
+		"<gene symbol exactly as in input>",
+		...
+		]
+  }
+- Do NOT include markdown code fences or any text outside the JSON array. Use ONLY the evidence provided in "Input:". Do NOT use any outside knowledge.
+
+Input:
+[input]
