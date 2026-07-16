@@ -66,7 +66,7 @@ DrugKLM/
 - Python ≥ 3.11
 - Conda (recommended)
 - Java (required for GSEA)
-- Download **[files](https://ftp.ncbi.nlm.nih.gov/pub/lu/DrugKLM/)** and store in DrugKLM folder
+- Download **[files](https://ftp.ncbi.nlm.nih.gov/pub/lu/RepurposeAgent/)** and store in DrugKLM folder
 ### Setup
 
 ```bash
