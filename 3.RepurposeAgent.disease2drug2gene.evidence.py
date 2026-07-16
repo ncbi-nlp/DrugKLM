@@ -1404,7 +1404,7 @@ if __name__ == "__main__":
 
 
 """
-python 3.DrugKLM.disease2drug2gene.evidence.py \
+python 3.RepurposeAgent.disease2drug2gene.evidence.py \
   --input output/disease2drug/melanoma.disease2drug.candidate.jsonl \
   --disease2gene_candidate_json output/disease2gene/melanoma.disease2gene.candidate.jsonl \
   --ctd_tsv DB/DrugGeneRelationEvdience.CTD.tsv \
@@ -1415,7 +1415,7 @@ python 3.DrugKLM.disease2drug2gene.evidence.py \
   --disease_detail_json input/melanoma.json \
   --output_folder output/drug2gene/melanoma
 
-python 3.DrugKLM.disease2drug2gene.evidence.py \
+python 3.RepurposeAgent.disease2drug2gene.evidence.py \
   --input output/disease2drug/mcrc.disease2drug.candidate.jsonl \
   --disease2gene_candidate_json output/disease2gene/mcrc.disease2gene.candidate.jsonl \
   --ctd_tsv DB/DrugGeneRelationEvdience.CTD.tsv \

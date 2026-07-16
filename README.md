@@ -1,8 +1,8 @@
-## DrugKLM: Knowledge Graphs Meet Large Language Models: A New Paradigm for Drug Repurposing
+## RepurposeAgent: Large Language Models Meet Biomedical Knowledge Graphs for Mechanistically Grounded Therapeutic Prioritization
 
 ## Overview
 
-**DrugKLM** is a disease-centric framework that integrates **biomedical knowledge graphs (KGs)** with **large language models (LLMs)** to enable **systematic drug repurposing and disease-specific drug ranking**.
+**RepurposeAgent** is a disease-centric framework that integrates **biomedical knowledge graphs (KGs)** with **large language models (LLMs)** to enable **systematic drug repurposing and disease-specific drug ranking**.
 
 The framework combines:
 - Structured knowledge (drug–gene–disease relations)
@@ -10,7 +10,7 @@ The framework combines:
 - Perturbational transcriptomics (LINCS)
 - LLM-based reasoning and summarization
 
-Unlike conventional drug-repurposing pipelines that focus on binary drug–disease prediction, DrugKLM provides an **interpretable, multi-evidence ranking of candidate drugs**, with optional **mechanistic explanations and disease subtype–aware analysis**.
+Unlike conventional drug-repurposing pipelines that focus on binary drug–disease prediction, RepurposeAgent provides an **interpretable, multi-evidence ranking of candidate drugs**, with optional **mechanistic explanations and disease subtype–aware analysis**.
 
 ---
 
@@ -38,8 +38,7 @@ Disease- and Drug-related Gene Evidence Integration
 Pathway Perturbation Analysis (LINCS / GSEA)
    ↓
 Evidence-grounded Confidence Scoring and Drug Ranking
-   ↓
-Standardized clinical stage labeling
+
 ```
 
 ---
@@ -47,8 +46,8 @@ Standardized clinical stage labeling
 ## Repository Structure
 
 ```
-DrugKLM/
-├── DrugKLM.sh                     # End-to-end pipeline
+RepurposeAgent/
+├── RepurposeAgent.sh              # End-to-end pipeline
 ├── input/                         # Disease input files
 ├── output/                        # Generated results
 ├── prompts/                       # LLM prompts
@@ -66,15 +65,15 @@ DrugKLM/
 - Python ≥ 3.11
 - Conda (recommended)
 - Java (required for GSEA)
-- Download **[files](https://ftp.ncbi.nlm.nih.gov/pub/lu/RepurposeAgent/)** and store in DrugKLM folder
+- Download **[files](https://ftp.ncbi.nlm.nih.gov/pub/lu/RepurposeAgent/)** and store in RepurposeAgent folder
 ### Setup
 
 ```bash
-git clone https://github.com/your-org/DrugKLM.git
-cd DrugKLM
+git clone https://github.com/your-org/RepurposeAgent.git
+cd RepurposeAgent
 
-conda create -n DrugKLM python=3.11
-conda activate DrugKLM
+conda create -n RepurposeAgent python=3.11
+conda activate RepurposeAgent
 
 pip install -r requirements.txt
 ```
@@ -83,7 +82,7 @@ pip install -r requirements.txt
 
 ## LLM Configuration
 
-DrugKLM uses OpenAI-compatible LLMs.
+RepurposeAgent uses OpenAI-compatible LLMs.
 
 Create a parameter file (not committed to GitHub):
 
@@ -104,7 +103,7 @@ MODEL=gpt-4o
 Run the complete pipeline for a disease:
 
 ```bash
-bash DrugKLM.sh "Acute Myeloid Leukemia"
+bash RepurposeAgent.sh "Acute Myeloid Leukemia"
 ```
 
 ---
@@ -121,12 +120,12 @@ output/<Disease>.final_prediction.tsv
 
 ## Citation
 
-If you use **DrugKLM**, please cite:
+If you use **RepurposeAgent**, please cite:
 
 ```bibtex
-@article{DrugKLM,
-  title={DrugKLM: Knowledge Graphs Meet Large Language Models: A New Paradigm for Drug Repurposing},
-  author={Wei, Chih-Hsuan and Wang, Zhizheng and Day, Chi-Ping and others},
+@article{RepurposeAgent,
+  title={Large Language Models Meet Biomedical Knowledge Graphs for Mechanistically Grounded Therapeutic Prioritization},
+  author={Wei, Chih-Hsuan and Day, Chi-Ping and Wang, Zhizheng and others},
   journal={TBD},
   year={2026}
 }
@@ -136,7 +135,7 @@ If you use **DrugKLM**, please cite:
 
 ## Disclaimer
 
-DrugKLM is intended for **research and hypothesis generation only** and is not designed for direct clinical decision-making. DrugKLM shows the results of research conducted in the Computational Biology Branch, DIR/NLM. The information produced on this website is not intended for direct diagnostic use or medical decision-making without review and oversight by a clinical professional. Individuals should not change their health behavior solely on the basis of information produced on this website. NIH does not independently verify the validity or utility of the information produced by this tool. If you have questions about the information produced on this website, please see a health care professional. 
+RepurposeAgent is intended for **research and hypothesis generation only** and is not designed for direct clinical decision-making. RepurposeAgent shows the results of research conducted in the Computational Biology Branch, DIR/NLM. The information produced on this website is not intended for direct diagnostic use or medical decision-making without review and oversight by a clinical professional. Individuals should not change their health behavior solely on the basis of information produced on this website. NIH does not independently verify the validity or utility of the information produced by this tool. If you have questions about the information produced on this website, please see a health care professional. 
 
 ---
 
